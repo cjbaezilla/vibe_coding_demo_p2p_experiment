@@ -11,9 +11,14 @@ import { updateUserPresence } from '../services/chatService';
  * Hook for managing real-time chat subscriptions
  * @param {string} roomId - Current room ID to subscribe to (optional)
  * @param {Function} onOnlineUsersChange - Callback when online users change
+ * @param {Function} onMembershipChange - Callback when room membership changes
  * @returns {object} Real-time state and handlers
  */
-export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
+export const useChatRealtime = (
+  roomId = null,
+  onOnlineUsersChange = null,
+  onMembershipChange = null
+) => {
   const { supabaseUser } = useSupabaseUserContext();
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -24,6 +29,7 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
   const subscriptions = useRef({
     messages: null,
     rooms: null,
+    members: null,
     presence: null,
     presenceInterval: null
   });
@@ -37,6 +43,9 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
     if (subscriptions.current.rooms) {
       subscriptions.current.rooms.unsubscribe();
     }
+    if (subscriptions.current.members) {
+      subscriptions.current.members.unsubscribe();
+    }
     if (subscriptions.current.presence) {
       subscriptions.current.presence.unsubscribe();
     }
@@ -48,6 +57,7 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
     subscriptions.current = {
       messages: null,
       rooms: null,
+      members: null,
       presence: null,
       presenceInterval: null
     };
@@ -137,6 +147,16 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
     fetchOnlineUsers();
   }, [onOnlineUsersChange, supabaseUser]);
 
+  // Handle room membership changes
+  const handleMembershipChange = useCallback((payload) => {
+    console.log('Room membership change detected:', payload);
+
+    // If a callback was provided, call it with the payload
+    if (onMembershipChange) {
+      onMembershipChange(payload);
+    }
+  }, [onMembershipChange]);
+
   // Setup subscriptions when component mounts or roomId changes
   useEffect(() => {
     // Only proceed if we have a valid user
@@ -166,7 +186,23 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
         )
         .subscribe();
 
-      // 3. Set up interval to update user's own presence
+      // 3. Subscribe to room membership changes
+      // If roomId is provided, filter for that specific room
+      // Otherwise, subscribe to all membership changes
+      subscriptions.current.members = supabase
+        .channel('public:chat_room_members')
+        .on('postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chat_room_members',
+            ...(roomId ? { filter: `room_id=eq.${roomId}` } : {})
+          },
+          handleMembershipChange
+        )
+        .subscribe();
+
+      // 4. Set up interval to update user's own presence
       subscriptions.current.presenceInterval = setInterval(() => {
         console.log('Updating user presence on interval');
         updateUserPresence(supabaseUser.id).catch(console.error);
@@ -191,7 +227,7 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
     return () => {
       cleanupSubscriptions();
     };
-  }, [supabaseUser, roomId, handleNewMessage, handlePresenceChange, cleanupSubscriptions]);
+  }, [supabaseUser, roomId, handleNewMessage, handlePresenceChange, handleMembershipChange, cleanupSubscriptions]);
 
   // Add message to local state optimistically (before server confirms)
   const addLocalMessage = useCallback((message) => {

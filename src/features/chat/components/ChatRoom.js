@@ -23,8 +23,19 @@ const ChatRoom = ({ roomId }) => {
     error,
     sendMessage,
     joinRoom,
-    leaveRoom
+    leaveRoom,
+    roomExists
   } = useChatRoom(roomId);
+
+  // If the room doesn't exist anymore, show a message
+  if (!roomExists) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center text-red-500 p-8">
+        <p className="text-xl mb-4">This room no longer exists</p>
+        <p>It may have been deleted by its creator or automatically removed.</p>
+      </div>
+    );
+  }
 
   if (!roomId) {
     return (
@@ -50,6 +61,17 @@ const ChatRoom = ({ roomId }) => {
       </div>
     );
   }
+
+  // Leave room action handler with feedback
+  const handleLeaveRoom = async () => {
+    try {
+      await leaveRoom();
+      // UI state will be updated by the real-time subscription and leaveRoom function
+    } catch (error) {
+      console.error('Error leaving room:', error);
+      // You could add error toast/notification here if needed
+    }
+  };
 
   return (
     <div className="flex h-full">
@@ -79,7 +101,7 @@ const ChatRoom = ({ roomId }) => {
           <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex justify-end items-center">
               <button
-                onClick={leaveRoom}
+                onClick={handleLeaveRoom}
                 disabled={loading}
                 className="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-4 rounded text-sm
                          disabled:opacity-50"
@@ -91,7 +113,12 @@ const ChatRoom = ({ roomId }) => {
         )}
 
         {/* Message List */}
-        <ChatMessageList messages={messages} loading={loading} />
+        <ChatMessageList
+          messages={messages}
+          loading={loading}
+          isEmpty={messages.length === 0}
+          isJoined={hasJoined}
+        />
 
         {/* Chat Input */}
         <ChatInput
@@ -113,7 +140,7 @@ const ChatRoom = ({ roomId }) => {
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Room Members</h2>
                 <button
-                  onClick={leaveRoom}
+                  onClick={handleLeaveRoom}
                   disabled={loading}
                   className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-2 rounded
                            focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"

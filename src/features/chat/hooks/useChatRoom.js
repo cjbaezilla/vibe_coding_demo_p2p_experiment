@@ -45,13 +45,56 @@ export const useChatRoom = (roomId) => {
     }
   }, [roomId]);
 
+  // Load room members
+  const loadMembers = useCallback(async () => {
+    if (!roomId || !supabaseUser) {
+      return;
+    }
+
+    try {
+      // First check if the room still exists
+      const exists = await checkRoomExists();
+      if (!exists) {
+        return;
+      }
+
+      const membersData = await getChatRoomMembers(roomId);
+      setMembers(membersData || []);
+
+      // Check if current user is a member
+      const isUserMember = membersData?.some(
+        (member) => member.users?.id === supabaseUser.id
+      );
+      setHasJoined(isUserMember);
+    } catch (err) {
+      console.error('Error loading room members:', err);
+    }
+  }, [roomId, supabaseUser, checkRoomExists]);
+
+  // Handle membership changes - refresh the members list and check if user is still a member
+  const handleMembershipChange = useCallback((payload) => {
+    console.log('Membership change in useChatRoom:', payload);
+
+    // Refresh the members list to get the updated membership status
+    loadMembers();
+
+    // If the current user was removed (DELETE event), update the UI accordingly
+    if (payload.eventType === 'DELETE' &&
+        payload.old &&
+        payload.old.user_id === supabaseUser?.id &&
+        payload.old.room_id === roomId) {
+      console.log('Current user was removed from the room');
+      setHasJoined(false);
+    }
+  }, [supabaseUser, roomId, loadMembers]);
+
   // Use the realtime hook to get messages and online status
   const {
     messages: realtimeMessages,
     onlineUsers,
     isSubscribed,
     addLocalMessage
-  } = useChatRealtime(roomId);
+  } = useChatRealtime(roomId, null, handleMembershipChange);
 
   // Load initial messages
   const loadMessages = useCallback(async () => {
@@ -76,32 +119,6 @@ export const useChatRoom = (roomId) => {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  }, [roomId, supabaseUser, checkRoomExists]);
-
-  // Load room members
-  const loadMembers = useCallback(async () => {
-    if (!roomId || !supabaseUser) {
-      return;
-    }
-
-    try {
-      // First check if the room still exists
-      const exists = await checkRoomExists();
-      if (!exists) {
-        return;
-      }
-
-      const membersData = await getChatRoomMembers(roomId);
-      setMembers(membersData || []);
-
-      // Check if current user is a member
-      const isUserMember = membersData?.some(
-        (member) => member.users?.id === supabaseUser.id
-      );
-      setHasJoined(isUserMember);
-    } catch (err) {
-      console.error('Error loading room members:', err);
     }
   }, [roomId, supabaseUser, checkRoomExists]);
 
@@ -144,8 +161,15 @@ export const useChatRoom = (roomId) => {
       }
 
       setLoading(true);
+
+      // Call the service to remove the member from the database
       await leaveChatRoom(supabaseUser.id, roomId);
+
+      // Update local state immediately for a responsive UI
       setHasJoined(false);
+
+      // We'll still refresh members to ensure consistency, though the real-time
+      // subscription should catch this change as well
       await loadMembers();
     } catch (err) {
       console.error('Error leaving room:', err);

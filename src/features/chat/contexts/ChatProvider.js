@@ -26,8 +26,20 @@ export const ChatProvider = ({ children }) => {
     }
   }, [chatState]);
 
+  // Handle global membership changes (for room list refresh)
+  const handleGlobalMembershipChange = useCallback((payload) => {
+    console.log('Global membership change detected:', payload);
+
+    // Refresh the rooms list to reflect membership changes
+    chatState.loadRooms();
+  }, [chatState]);
+
   // Subscribe to real-time updates with no specific room ID
-  const realtimeState = useChatRealtime(null, handleOnlineUsersChange);
+  const realtimeState = useChatRealtime(
+    null,
+    handleOnlineUsersChange,
+    handleGlobalMembershipChange
+  );
 
   // Combine the chat state with the realtime state
   const combinedState = {

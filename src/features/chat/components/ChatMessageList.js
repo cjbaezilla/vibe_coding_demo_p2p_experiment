@@ -9,9 +9,16 @@ import ChatMessageItem from './ChatMessageItem';
  * @param {object} props - Component props
  * @param {Array} props.messages - List of message objects
  * @param {boolean} props.loading - Whether messages are loading
+ * @param {boolean} props.isEmpty - Whether the message list is empty
+ * @param {boolean} props.isJoined - Whether the user has joined the room
  * @returns {React.ReactElement} The component
  */
-const ChatMessageList = ({ messages, loading }) => {
+const ChatMessageList = ({
+  messages,
+  loading,
+  isEmpty = !messages || messages.length === 0,
+  isJoined = true
+}) => {
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages are added
@@ -20,9 +27,6 @@ const ChatMessageList = ({ messages, loading }) => {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  // Check if messages array is empty
-  const isEmpty = !messages || messages.length === 0;
 
   return (
     <div
@@ -33,6 +37,12 @@ const ChatMessageList = ({ messages, loading }) => {
         <div className="flex justify-center items-center h-full">
           <div className="animate-pulse text-gray-500 dark:text-gray-400">
             Loading messages...
+          </div>
+        </div>
+      ) : isEmpty && !isJoined ? (
+        <div className="flex justify-center items-center h-full">
+          <div className="text-gray-500 dark:text-gray-400">
+            Join this room to see messages
           </div>
         </div>
       ) : isEmpty ? (
@@ -48,10 +58,9 @@ const ChatMessageList = ({ messages, loading }) => {
             <ChatMessageItem
               key={message.id}
               message={message}
-              isTemporary={message.id.toString().startsWith('temp-')}
             />
           ))}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} /> {/* Empty div for auto-scroll */}
         </div>
       )}
     </div>
