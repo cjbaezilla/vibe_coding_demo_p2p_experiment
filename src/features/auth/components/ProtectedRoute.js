@@ -1,8 +1,7 @@
 import React from 'react';
-import { useAuth, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
-import { Navigate } from 'react-router-dom';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 
-const ProtectedRoute = ({ children, redirectTo = '/login' }) => {
+const ProtectedRoute = ({ children }) => {
   return (
     <>
       <SignedIn>{children}</SignedIn>
