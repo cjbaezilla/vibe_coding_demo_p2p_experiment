@@ -2,10 +2,203 @@
  * Main component for a chat room that integrates all chat subcomponents
  */
 import React, { useEffect } from 'react';
+import styled from 'styled-components';
 import { useChatRoom } from '../hooks/useChatRoom';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
 import OnlineUsersList from './OnlineUsersList';
+import {
+  PrimaryButton, Card, Text, Subtitle, SlideUp, FadeIn
+} from '../../common/components/StyledComponents';
+
+// Styled components for ChatRoom
+const ChatRoomContainer = styled.div`
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+`;
+
+const MainChatArea = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: ${({ theme }) => theme.borderRadius.lg} 0 0 ${({ theme }) => theme.borderRadius.lg};
+`;
+
+const SidePanel = styled.div`
+  width: 280px;
+  border-left: 1px solid ${({ theme }) => theme.colors.accent3};
+  padding: ${({ theme }) => theme.space.md};
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(5px);
+  border-radius: 0 ${({ theme }) => theme.borderRadius.lg} ${({ theme }) => theme.borderRadius.lg} 0;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.colors.accent2}80;
+    border-radius: ${({ theme }) => theme.borderRadius.full};
+  }
+  
+  @media (max-width: 1024px) {
+    display: none;
+  }
+`;
+
+const RoomBanner = styled.div`
+  padding: ${({ theme }) => theme.space.md};
+  display: flex;
+  justify-content: ${(props) => props.justifyContent || 'space-between'};
+  align-items: center;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.accent3};
+  
+  ${(props) => props.joining && `
+    background: linear-gradient(to right, 
+      ${props.theme.colors.secondary}20, 
+      ${props.theme.colors.primary}20
+    );
+  `}
+  
+  ${(props) => props.leaving && `
+    background: linear-gradient(to right, 
+      ${props.theme.colors.accent3}, 
+      ${props.theme.colors.background}
+    );
+  `}
+`;
+
+const BannerText = styled(Text)`
+  color: ${({ theme, variant }) =>
+    variant === 'error'
+      ? theme.colors.error
+      : variant === 'primary'
+        ? theme.colors.primary
+        : theme.colors.text.primary
+  };
+  font-weight: 500;
+  margin: 0;
+`;
+
+const JoinButton = styled(PrimaryButton)`
+  background: linear-gradient(45deg, 
+    ${({ theme }) => theme.colors.secondary}, 
+    ${({ theme }) => theme.colors.primary}
+  );
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  padding: ${({ theme }) => `${theme.space.xs} ${theme.space.md}`};
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const LeaveButton = styled(PrimaryButton)`
+  background: linear-gradient(45deg, 
+    ${({ theme }) => theme.colors.error}, 
+    ${({ theme }) => theme.colors.accent1}
+  );
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  padding: ${({ theme }) => `${theme.space.xs} ${theme.space.md}`};
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const SmallLeaveButton = styled(LeaveButton)`
+  font-size: ${({ theme }) => theme.fontSizes.xs};
+  padding: ${({ theme }) => `${theme.space.xs} ${theme.space.sm}`};
+`;
+
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  padding: ${({ theme }) => theme.space.xl};
+  text-align: center;
+  
+  svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: ${({ theme }) => theme.space.md};
+    color: ${({ variant, theme }) =>
+      variant === 'error'
+        ? theme.colors.error
+        : theme.colors.tertiary
+    };
+  }
+`;
+
+const MembersCard = styled(Card)`
+  margin-top: ${({ theme }) => theme.space.md};
+  background: rgba(255, 255, 255, 0.8);
+`;
+
+const MembersHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.space.md};
+`;
+
+const MembersList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  
+  li {
+    display: flex;
+    align-items: center;
+    padding: ${({ theme }) => theme.space.sm} 0;
+    
+    &:not(:last-child) {
+      border-bottom: 1px dashed ${({ theme }) => theme.colors.accent3};
+    }
+  }
+`;
+
+const MemberImage = styled.img`
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: ${({ theme }) => theme.space.sm};
+  border: 2px solid ${({ theme, online }) =>
+    online ? theme.colors.success : 'transparent'
+  };
+`;
+
+const MemberName = styled.span`
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  color: ${({ theme }) => theme.colors.text.primary};
+  display: flex;
+  align-items: center;
+`;
+
+const OnlineIndicator = styled.span`
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: ${({ theme }) => theme.colors.success};
+  margin-left: ${({ theme }) => theme.space.sm};
+`;
 
 /**
  * Chat room component
@@ -35,35 +228,46 @@ const ChatRoom = ({ roomId }) => {
   // If the room doesn't exist anymore, show a message
   if (!roomExists) {
     return (
-      <div className="flex flex-col h-full items-center justify-center text-red-500 p-8">
-        <p className="text-xl mb-4">This room no longer exists</p>
-        <p>It may have been deleted by its creator or automatically removed.</p>
-      </div>
+      <EmptyStateContainer variant="error">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <Subtitle>This room no longer exists</Subtitle>
+        <Text>It may have been deleted by its creator or automatically removed.</Text>
+      </EmptyStateContainer>
     );
   }
 
   if (!roomId) {
     return (
-      <div className="flex flex-col h-full items-center justify-center text-gray-500 dark:text-gray-400 p-8">
-        <p className="text-xl mb-4">Select a chat room to start messaging</p>
-        <p>Or create a new room to begin a conversation</p>
-      </div>
+      <EmptyStateContainer>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+        </svg>
+        <Subtitle>Select a chat room to start messaging</Subtitle>
+        <Text>Or create a new room to begin a conversation</Text>
+      </EmptyStateContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col h-full items-center justify-center text-red-500 p-8">
-        <p className="text-xl mb-4">Error loading chat room</p>
-        <p>{error}</p>
-        <button
-          onClick={joinRoom}
-          className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded
-                   focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+      <EmptyStateContainer variant="error">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <Subtitle>Error loading chat room</Subtitle>
+        <Text>{error}</Text>
+        <JoinButton onClick={joinRoom} style={{ marginTop: '1rem' }}>
           Try Again
-        </button>
-      </div>
+        </JoinButton>
+      </EmptyStateContainer>
     );
   }
 
@@ -80,42 +284,38 @@ const ChatRoom = ({ roomId }) => {
   };
 
   return (
-    <div className="flex h-full">
+    <ChatRoomContainer>
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full">
+      <MainChatArea>
         {/* Join Room Banner (if not joined) */}
         {!hasJoined && (
-          <div className="bg-blue-50 dark:bg-blue-900 p-4 border-b border-blue-200 dark:border-blue-800">
-            <div className="flex justify-between items-center">
-              <p className="text-blue-700 dark:text-blue-300">
+          <SlideUp>
+            <RoomBanner joining>
+              <BannerText variant="primary">
                 Join this room to start chatting
-              </p>
-              <button
+              </BannerText>
+              <JoinButton
                 onClick={joinRoom}
                 disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-4 rounded text-sm
-                         disabled:opacity-50"
               >
                 {loading ? 'Joining...' : 'Join Room'}
-              </button>
-            </div>
-          </div>
+              </JoinButton>
+            </RoomBanner>
+          </SlideUp>
         )}
 
         {/* Leave Room Banner (if joined) */}
         {hasJoined && (
-          <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex justify-end items-center">
-              <button
+          <SlideUp>
+            <RoomBanner justifyContent="flex-end" leaving>
+              <LeaveButton
                 onClick={handleLeaveRoom}
                 disabled={loading}
-                className="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-4 rounded text-sm
-                         disabled:opacity-50"
               >
                 {loading ? 'Leaving...' : 'Leave Room'}
-              </button>
-            </div>
-          </div>
+              </LeaveButton>
+            </RoomBanner>
+          </SlideUp>
         )}
 
         {/* Message List */}
@@ -131,51 +331,47 @@ const ChatRoom = ({ roomId }) => {
           onSendMessage={sendMessage}
           disabled={!hasJoined || loading}
         />
-      </div>
+      </MainChatArea>
 
       {/* Side Panel - Members & Online Users */}
-      <div className="w-64 border-l border-gray-200 dark:border-gray-700 p-4 hidden lg:block overflow-y-auto
-                    bg-gray-50 dark:bg-gray-800">
-        <div className="space-y-4">
+      <FadeIn>
+        <SidePanel>
           {/* Online Users List */}
           <OnlineUsersList users={onlineUsers} />
 
           {/* Room Members Section (if joined) */}
           {hasJoined && members.length > 0 && (
-            <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg shadow-md">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Room Members</h2>
-                <button
+            <MembersCard>
+              <MembersHeader>
+                <Subtitle style={{ margin: 0, fontSize: '1.1rem' }}>Room Members</Subtitle>
+                <SmallLeaveButton
                   onClick={handleLeaveRoom}
                   disabled={loading}
-                  className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-2 rounded
-                           focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 >
                   {loading ? 'Leaving...' : 'Leave'}
-                </button>
-              </div>
-              <ul className="space-y-2">
+                </SmallLeaveButton>
+              </MembersHeader>
+
+              <MembersList>
                 {members.map((member) => (
-                  <li key={member.id} className="flex items-center">
-                    <img
+                  <li key={member.id}>
+                    <MemberImage
                       src={member.users?.image_url || 'https://via.placeholder.com/32'}
                       alt={member.users?.full_name || 'User'}
-                      className="h-8 w-8 rounded-full mr-2"
+                      online={member.isOnline}
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <MemberName>
                       {member.users?.full_name || 'Unknown User'}
-                      {member.isOnline && (
-                        <span className="inline-block ml-2 h-2 w-2 rounded-full bg-green-400" />
-                      )}
-                    </span>
+                      {member.isOnline && <OnlineIndicator />}
+                    </MemberName>
                   </li>
                 ))}
-              </ul>
-            </div>
+              </MembersList>
+            </MembersCard>
           )}
-        </div>
-      </div>
-    </div>
+        </SidePanel>
+      </FadeIn>
+    </ChatRoomContainer>
   );
 };
 
