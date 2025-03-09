@@ -1,7 +1,8 @@
 import React from 'react';
 
 /**
- *
+ * About page component displaying information about the application
+ * @returns {React.ReactElement} The rendered about page
  */
 const AboutPage = () => (
     <div className="py-8 px-4">

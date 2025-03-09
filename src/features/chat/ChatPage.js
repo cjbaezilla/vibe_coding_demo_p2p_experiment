@@ -19,9 +19,8 @@ const ChatPageContent = () => {
     selectRoom
   } = useChatContext();
 
-  // Enhanced select room handler with logging
+  // Enhanced select room handler without logging
   const handleSelectRoom = (roomId) => {
-    console.log(`ChatPage: Selecting room ${roomId}`);
     selectRoom(roomId);
   };
 

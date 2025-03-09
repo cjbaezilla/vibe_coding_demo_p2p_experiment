@@ -1,19 +1,20 @@
 import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
-import AuthFormContainer from './AuthFormContainer';
+import AuthPage from './AuthPage';
 
 /**
- *
+ * Component that renders the Clerk sign-in form
+ * @returns {React.ReactElement} The rendered login form
  */
 const LoginForm = () => (
-    <AuthFormContainer title="Sign In">
+    <AuthPage title="Sign In" centered containerized>
       <SignIn
         routing="path"
         path="/login"
         signUpUrl="/signup"
         redirectUrl="/"
       />
-    </AuthFormContainer>
+    </AuthPage>
   );
 
 export default LoginForm;

@@ -14,9 +14,9 @@ import OnlineUsersList from './OnlineUsersList';
  * @returns {React.ReactElement} The component
  */
 const ChatRoom = ({ roomId }) => {
-  // Log roomId changes for debugging
+  // No need to log roomId changes
   useEffect(() => {
-    console.log(`ChatRoom rendering with roomId: ${roomId}`);
+    // Component mounted with roomId
   }, [roomId]);
 
   const {
@@ -73,6 +73,7 @@ const ChatRoom = ({ roomId }) => {
       await leaveRoom();
       // UI state will be updated by the real-time subscription and leaveRoom function
     } catch (error) {
+      // Use console.error which is allowed by ESLint config
       console.error('Error leaving room:', error);
       // You could add error toast/notification here if needed
     }
