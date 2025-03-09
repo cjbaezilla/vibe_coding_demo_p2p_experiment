@@ -2,18 +2,15 @@
 
 ConnectHub is a modern web application that combines Clerk authentication with Supabase for data persistence and WebRTC for real-time communication capabilities. This platform demonstrates how different technologies can be integrated to create a seamless real-time chat experience.
 
+## Video Demo
+
+Check out the 6 hours non stop video demo: [https://www.youtube.com/watch?v=bJxUJia5FIc](https://www.youtube.com/watch?v=bJxUJia5FIc)
+
 ## Screenshots
 
 ![ConnectHub Homepage](./public/connecthub-screenshot.jpg)
 ![ConnectHub User Page](./public/connecthub-screenshot2.jpg)
 ![ConnectHub Chat](./public/connecthub-screenshot3.jpg)
-
-*ConnectHub homepage showing the colorful chat interface with vibrant message bubbles and call-to-action buttons.*
-
-> **Note:** To properly display this screenshot:
-> 1. Save the screenshot image from this conversation
-> 2. Rename it to `connecthub-screenshot.jpg`
-> 3. Place it in the `public/` directory of the project
 
 ## Technology Stack
 
@@ -260,3 +257,12 @@ npm start
 ## License
 
 This project is licensed under the MIT License.
+
+## Connect With Me
+
+- Website: https://carlos-baeza.com
+- Instagram: https://www.instagram.com/cjbaezilla  
+- Twitter/X: https://x.com/cjbaezilla
+- GitHub: https://github.com/cjbaezilla
+- Telegram: https://t.me/cjbaezilla
+- Nostr: https://primal.net/baeza
