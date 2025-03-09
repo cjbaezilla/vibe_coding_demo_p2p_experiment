@@ -2,6 +2,17 @@
 
 ConnectHub is a modern web application that combines Clerk authentication with Supabase for data persistence and WebRTC for real-time communication capabilities. This platform demonstrates how different technologies can be integrated to create a seamless real-time chat experience.
 
+## Screenshots
+
+![ConnectHub Homepage](./public/connecthub-screenshot.jpg)
+
+*ConnectHub homepage showing the colorful chat interface with vibrant message bubbles and call-to-action buttons.*
+
+> **Note:** To properly display this screenshot:
+> 1. Save the screenshot image from this conversation
+> 2. Rename it to `connecthub-screenshot.jpg`
+> 3. Place it in the `public/` directory of the project
+
 ## Technology Stack
 
 - **React (v19)**: Frontend library for building the user interface
