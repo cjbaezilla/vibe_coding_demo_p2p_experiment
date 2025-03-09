@@ -10,7 +10,7 @@ import { formatTimeSince } from '../common/utils/dateUtils';
  */
 const ProfilePage = () => {
   const { user } = useUser();
-  const { supabaseUser, isLoading: isSupabaseLoading } = useSupabaseUserContext();
+  const { supabaseUser, isLoading: isSupabaseLoading, error: supabaseError } = useSupabaseUserContext();
 
   if (!user) {
     return <div className="container mx-auto px-4 py-8">Loading user data...</div>;
@@ -47,7 +47,12 @@ const ProfilePage = () => {
           {/* Supabase User Information */}
           <div className="border rounded-lg p-4">
             <h3 className="font-bold text-lg mb-2 border-b pb-2">Supabase Data</h3>
-            {isSupabaseLoading ? (
+            {supabaseError ? (
+              <div className="p-3 bg-red-50 text-red-700 rounded-md">
+                <p className="font-medium">Error connecting to database</p>
+                <p className="text-sm mt-1">Please try again later or contact support</p>
+              </div>
+            ) : isSupabaseLoading ? (
               <p>Loading Supabase data...</p>
             ) : supabaseUser ? (
               <>
@@ -61,7 +66,10 @@ const ProfilePage = () => {
                 </p>
               </>
             ) : (
-              <p>No Supabase user data found</p>
+              <div className="p-3 bg-yellow-50 text-yellow-700 rounded-md">
+                <p>Your Supabase user record hasn't been created yet.</p>
+                <p className="text-sm mt-1">This may happen the first time you log in.</p>
+              </div>
             )}
           </div>
         </div>

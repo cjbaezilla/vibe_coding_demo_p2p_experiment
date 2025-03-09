@@ -27,12 +27,12 @@ export const syncUserWithSupabase = async (clerkUser) => {
       .from('users')
       .select('*')
       .eq('clerk_id', clerkUser.id)
-      .single();
+      .maybeSingle();
 
+    // Handle fetch errors more gracefully
     if (fetchError && fetchError.code !== 'PGRST116') {
-      // PGRST116 means no rows returned, which is expected if user doesn't exist
       console.error('Error fetching user:', fetchError);
-      throw fetchError;
+      // Don't throw, proceed to create/update to attempt recovery
     }
 
     const userData = {
@@ -52,7 +52,7 @@ export const syncUserWithSupabase = async (clerkUser) => {
         .update(userData)
         .eq('clerk_id', clerkUser.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error('Error updating user:', updateError);
@@ -69,7 +69,7 @@ export const syncUserWithSupabase = async (clerkUser) => {
           id: uuidv4()
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (insertError) {
         console.error('Error inserting user:', insertError);
@@ -95,23 +95,31 @@ export const getUserByClerkId = async (clerkId) => {
   }
 
   try {
+    // Use a more specific query approach with better error handling
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('clerk_id', clerkId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single for better error handling
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows returned
+      // Log the full error for debugging
+      console.error('Error fetching user by Clerk ID:', error);
+      
+      // Check for different error scenarios
+      if (error.code === 'PGRST116' || error.code === '406') {
+        // No rows returned or API format issue
+        console.error('User not found or API formatting issue:', error.message);
         return null;
       }
+      
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Error fetching user by Clerk ID:', error);
-    throw error;
+    console.error('Unexpected error fetching user by Clerk ID:', error);
+    // Don't throw, just return null to allow UI to handle gracefully
+    return null;
   }
 }; 

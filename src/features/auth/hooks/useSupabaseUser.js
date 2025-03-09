@@ -41,7 +41,13 @@ export const useSupabaseUser = () => {
             userRecord.email !== clerkUser.primaryEmailAddress?.emailAddress ||
             userRecord.full_name !== clerkUser.fullName ||
             userRecord.image_url !== clerkUser.imageUrl) {
-          userRecord = await syncUserWithSupabase(clerkUser);
+          
+          try {
+            userRecord = await syncUserWithSupabase(clerkUser);
+          } catch (syncError) {
+            console.error('Error syncing user data:', syncError);
+            // If sync fails, still use whatever user record we might have
+          }
         }
         
         setSupabaseUser(userRecord);
@@ -49,6 +55,7 @@ export const useSupabaseUser = () => {
       } catch (err) {
         console.error('Error in useSupabaseUser hook:', err);
         setError(err);
+        // Still set loading to false so UI doesn't hang
       } finally {
         setIsLoading(false);
       }
@@ -69,6 +76,7 @@ export const useSupabaseUser = () => {
           setSupabaseUser(userRecord);
           setError(null);
         } catch (err) {
+          console.error('Error refetching user data:', err);
           setError(err);
         } finally {
           setIsLoading(false);
