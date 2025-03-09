@@ -16,6 +16,10 @@ import ProfilePage from './features/auth/ProfilePage';
 import ClerkProvider from './features/auth/contexts/ClerkProvider';
 import ProtectedRoute from './features/auth/components/ProtectedRoute';
 
+/**
+ * Main application component that sets up routing and authentication
+ * @returns {React.ReactElement} The rendered application
+ */
 function App() {
   return (
     <ClerkProvider>

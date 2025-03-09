@@ -1,43 +1,26 @@
 import React from 'react';
 import { useUser } from '@clerk/clerk-react';
+import { useSupabaseUserContext } from './contexts/SupabaseUserProvider';
+import { formatTimeSince } from '../common/utils/dateUtils';
 
+/**
+ * Component that displays user profile information
+ * Shows data from both Clerk and Supabase
+ * @returns {React.ReactElement} The rendered profile page
+ */
 const ProfilePage = () => {
   const { user } = useUser();
+  const { supabaseUser, isLoading: isSupabaseLoading } = useSupabaseUserContext();
 
-  if (!user) return <div>Loading...</div>;
-
-  // Format date to show time since creation
-  const formatTimeSince = (dateString) => {
-    const createdAt = new Date(dateString);
-    const now = new Date();
-    
-    const seconds = Math.floor((now - createdAt) / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
-    
-    if (years > 0) {
-      return `${years} ${years === 1 ? 'year' : 'years'} ago`;
-    } else if (months > 0) {
-      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
-    } else if (days > 0) {
-      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
-    } else if (hours > 0) {
-      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-    } else if (minutes > 0) {
-      return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
-    } else {
-      return 'just now';
-    }
-  };
+  if (!user) {
+    return <div className="container mx-auto px-4 py-8">Loading user data...</div>;
+  }
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Your Profile</h1>
       
-      <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+      <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto mb-8">
         <div className="flex items-center mb-6">
           {user.imageUrl && (
             <img 
@@ -52,11 +35,40 @@ const ProfilePage = () => {
           </div>
         </div>
         
-        <div className="border-t pt-4">
-          <h3 className="font-bold mb-2">Account Information</h3>
-          <p><span className="font-medium">ID:</span> {user.id}</p>
-          <p><span className="font-medium">Member since:</span> {formatTimeSince(user.createdAt)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Clerk Account Information */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-bold text-lg mb-2 border-b pb-2">Clerk Account</h3>
+            <p className="py-1"><span className="font-medium">ID:</span> {user.id}</p>
+            <p className="py-1"><span className="font-medium">Email:</span> {user.primaryEmailAddress?.emailAddress}</p>
+            <p className="py-1"><span className="font-medium">Member since:</span> {formatTimeSince(user.createdAt)}</p>
+          </div>
+          
+          {/* Supabase User Information */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-bold text-lg mb-2 border-b pb-2">Supabase Data</h3>
+            {isSupabaseLoading ? (
+              <p>Loading Supabase data...</p>
+            ) : supabaseUser ? (
+              <>
+                <p className="py-1"><span className="font-medium">ID:</span> {supabaseUser.id}</p>
+                <p className="py-1"><span className="font-medium">Clerk ID:</span> {supabaseUser.clerk_id}</p>
+                <p className="py-1">
+                  <span className="font-medium">Created at:</span> {formatTimeSince(supabaseUser.created_at)}
+                </p>
+                <p className="py-1">
+                  <span className="font-medium">Last updated:</span> {formatTimeSince(supabaseUser.updated_at)}
+                </p>
+              </>
+            ) : (
+              <p>No Supabase user data found</p>
+            )}
+          </div>
         </div>
+      </div>
+      
+      <div className="text-center text-sm text-gray-500">
+        <p>Your account is synchronized between Clerk (authentication) and Supabase (data storage)</p>
       </div>
     </div>
   );

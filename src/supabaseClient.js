@@ -1,6 +1,18 @@
+/**
+ * Supabase client setup
+ * Provides both anonymous access client and service role client
+ */
 import { createClient } from '@supabase/supabase-js'
+import { supabaseConfig, validateEnv } from './config/env'
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
+// Validate environment variables
+validateEnv()
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+// Regular client with anonymous access
+export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey)
+
+// Service role client with admin privileges
+// Only use this client for specific operations that require elevated permissions
+export const supabaseAdmin = supabaseConfig.serviceKey
+  ? createClient(supabaseConfig.url, supabaseConfig.serviceKey)
+  : null 

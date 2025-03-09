@@ -1,16 +1,23 @@
 import React from 'react';
 import { ClerkProvider as ClerkProviderOriginal } from '@clerk/clerk-react';
+import { SupabaseUserProvider } from './SupabaseUserProvider';
+import { clerkConfig, validateEnv } from '../../../config/env';
 
+/**
+ * Combined auth provider that wraps Clerk and Supabase user providers
+ * @param {object} props - Component props
+ * @param {React.ReactNode} props.children - Child components
+ * @returns {React.ReactElement} The provider component
+ */
 const ClerkProvider = ({ children }) => {
-  const publishableKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+  // Validate environment variables
+  validateEnv();
   
-  if (!publishableKey) {
-    throw new Error('Missing Clerk publishable key');
-  }
-
   return (
-    <ClerkProviderOriginal publishableKey={publishableKey}>
-      {children}
+    <ClerkProviderOriginal publishableKey={clerkConfig.publishableKey}>
+      <SupabaseUserProvider>
+        {children}
+      </SupabaseUserProvider>
     </ClerkProviderOriginal>
   );
 };
