@@ -17,22 +17,117 @@ export const fetchChatRooms = async (userId) => {
     throw new Error('User not authenticated');
   }
 
-  if (!supabaseAdmin) {
-    throw new Error('Admin client not available for fetching rooms');
-  }
-
   try {
-    // Use PostgreSQL stored function to safely collect all accessible rooms
-    // This completely avoids the policy recursion issue by using a single, direct stored procedure
-    const { data, error } = await supabaseAdmin.rpc('get_accessible_rooms_for_user', {
-      user_id: userId
-    });
+    // Check if admin client is available
+    if (supabaseAdmin) {
+      try {
+        // First try using the stored procedure
+        const { data, error } = await supabaseAdmin.rpc('get_accessible_rooms_for_user', {
+          user_id: userId
+        });
 
-    if (error) {
-      throw new Error(`Error fetching chat rooms: ${error.message}`);
+        if (error) {
+          console.warn('Error using stored procedure for rooms, falling back to direct queries:', error);
+          // If the stored procedure fails, we'll continue to the fallback approach
+        } else {
+          return data || [];
+        }
+      } catch (rpcError) {
+        console.warn('Failed to use RPC for fetching rooms, falling back to direct queries:', rpcError);
+        // Continue to fallback approach
+      }
     }
 
-    return data || [];
+    // Fallback approach: direct queries with the admin client
+    // This avoids RLS policies but duplicates logic from the stored procedure
+
+    // 1. Get public rooms
+    const { data: publicRooms, error: publicError } = await (supabaseAdmin || supabase)
+      .from('chat_rooms')
+      .select(`
+        id,
+        name,
+        description,
+        created_by,
+        is_private,
+        created_at,
+        updated_at
+      `)
+      .eq('is_private', false)
+      .order('updated_at', { ascending: false });
+
+    if (publicError) {
+      throw new Error(`Error fetching public chat rooms: ${publicError.message}`);
+    }
+
+    // 2. Get private rooms created by the user
+    const { data: createdRooms, error: createdError } = await (supabaseAdmin || supabase)
+      .from('chat_rooms')
+      .select(`
+        id,
+        name,
+        description,
+        created_by,
+        is_private,
+        created_at,
+        updated_at
+      `)
+      .eq('is_private', true)
+      .eq('created_by', userId)
+      .order('updated_at', { ascending: false });
+
+    if (createdError) {
+      throw new Error(`Error fetching created rooms: ${createdError.message}`);
+    }
+
+    // 3. Get memberships
+    const { data: memberships, error: membershipError } = await (supabaseAdmin || supabase)
+      .from('chat_room_members')
+      .select('room_id')
+      .eq('user_id', userId);
+
+    if (membershipError) {
+      throw new Error(`Error fetching room memberships: ${membershipError.message}`);
+    }
+
+    // Extract room IDs
+    const memberRoomIds = memberships?.map((m) => m.room_id) || [];
+
+    // 4. Get private rooms user is a member of
+    let memberRooms = [];
+    if (memberRoomIds.length > 0) {
+      const { data: fetchedMemberRooms, error: memberRoomsError } = await (supabaseAdmin || supabase)
+        .from('chat_rooms')
+        .select(`
+          id,
+          name,
+          description,
+          created_by,
+          is_private,
+          created_at,
+          updated_at
+        `)
+        .eq('is_private', true)
+        .in('id', memberRoomIds)
+        .order('updated_at', { ascending: false });
+
+      if (memberRoomsError) {
+        throw new Error(`Error fetching member rooms: ${memberRoomsError.message}`);
+      }
+
+      memberRooms = fetchedMemberRooms || [];
+    }
+
+    // Combine results and remove duplicates
+    const uniqueRoomMap = new Map();
+
+    [...(publicRooms || []), ...(createdRooms || []), ...memberRooms].forEach((room) => {
+      if (room && room.id) {
+        uniqueRoomMap.set(room.id, room);
+      }
+    });
+
+    return Array.from(uniqueRoomMap.values());
   } catch (error) {
     console.error('Error in fetchChatRooms:', error);
     throw error;
@@ -140,10 +235,6 @@ export const sendChatMessage = async (userId, roomId, message) => {
     throw new Error('User not authenticated');
   }
 
-  if (!supabaseAdmin) {
-    throw new Error('Admin client not available for sending message');
-  }
-
   try {
     // First verify user's access to the room using the helper function
     const hasAccess = await canAccessRoom(userId, roomId);
@@ -152,8 +243,11 @@ export const sendChatMessage = async (userId, roomId, message) => {
       throw new Error('You do not have access to this room');
     }
 
-    // Use admin client to insert the message
-    const { data, error } = await supabaseAdmin
+    // Use admin client if available, otherwise fall back to regular client
+    const client = supabaseAdmin || supabase;
+
+    // Insert the message
+    const { data, error } = await client
       .from('chat_messages')
       .insert({
         room_id: roomId,
@@ -185,13 +279,12 @@ export const joinChatRoom = async (userId, roomId) => {
     throw new Error('User not authenticated');
   }
 
-  if (!supabaseAdmin) {
-    throw new Error('Admin client not available for joining room');
-  }
-
   try {
+    // Use the client that's available (admin preferred)
+    const client = supabaseAdmin || supabase;
+
     // First, check if the room exists and user has permission to join
-    const { data: room, error: roomError } = await supabase
+    const { data: room, error: roomError } = await client
       .from('chat_rooms')
       .select('*')
       .eq('id', roomId)
@@ -206,8 +299,8 @@ export const joinChatRoom = async (userId, roomId) => {
       throw new Error('Cannot join private room: permission denied');
     }
 
-    // Use admin client to bypass RLS for the insert
-    const { data, error } = await supabaseAdmin
+    // Try to insert the membership
+    const { data, error } = await client
       .from('chat_room_members')
       .insert({
         room_id: roomId,
@@ -220,7 +313,7 @@ export const joinChatRoom = async (userId, roomId) => {
       // If error is duplicate key, user is already a member - that's ok
       if (error.code === '23505') {
         // Return the existing membership
-        const { data: existingMembership, error: existingError } = await supabaseAdmin
+        const { data: existingMembership, error: existingError } = await client
           .from('chat_room_members')
           .select('*')
           .eq('room_id', roomId)
@@ -250,13 +343,12 @@ export const joinChatRoom = async (userId, roomId) => {
  * @returns {Promise<Array>} List of room members with user details
  */
 export const getChatRoomMembers = async (roomId) => {
-  if (!supabaseAdmin) {
-    throw new Error('Admin client not available for fetching room members');
-  }
-
   try {
-    // Use admin client to bypass RLS policies
-    const { data, error } = await supabaseAdmin
+    // Use the client that's available (admin preferred)
+    const client = supabaseAdmin || supabase;
+
+    // Get room members with user info
+    const { data, error } = await client
       .from('chat_room_members')
       .select(`
         id,
@@ -307,23 +399,67 @@ export const canAccessRoom = async (userId, roomId) => {
     return false;
   }
 
-  if (!supabaseAdmin) {
-    throw new Error('Admin client not available for checking room access');
-  }
-
   try {
-    // Use the stored procedure to check access
-    const { data, error } = await supabaseAdmin.rpc('user_can_access_room', {
-      user_uuid: userId,
-      room_uuid: roomId
-    });
+    // Try using the stored procedure if admin client is available
+    if (supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin.rpc('user_can_access_room', {
+          user_uuid: userId,
+          room_uuid: roomId
+        });
 
-    if (error) {
-      console.error('Error checking room access:', error);
+        if (error) {
+          console.warn('Error using stored procedure for access check, falling back to direct query:', error);
+          // If the stored procedure fails, we'll continue to the fallback
+        } else {
+          return data === true;
+        }
+      } catch (rpcError) {
+        console.warn('Failed to use RPC for access check, falling back to direct query:', rpcError);
+        // Continue to fallback
+      }
+    }
+
+    // Fallback: Direct query with the same logic as the stored procedure
+    const client = supabaseAdmin || supabase;
+
+    // Check if room is public
+    const { data: roomData, error: roomError } = await client
+      .from('chat_rooms')
+      .select('is_private, created_by')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError) {
+      console.error('Error checking room access:', roomError);
       return false;
     }
 
-    return data === true;
+    // If room is public, allow access
+    if (!roomData.is_private) {
+      return true;
+    }
+
+    // If user is the creator, allow access
+    if (roomData.created_by === userId) {
+      return true;
+    }
+
+    // Check if user is a member
+    const { data: memberData, error: memberError } = await client
+      .from('chat_room_members')
+      .select('id')
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (memberError) {
+      console.error('Error checking room membership:', memberError);
+      return false;
+    }
+
+    // User can access if they are a member
+    return memberData !== null;
   } catch (error) {
     console.error('Error in canAccessRoom:', error);
     return false;
