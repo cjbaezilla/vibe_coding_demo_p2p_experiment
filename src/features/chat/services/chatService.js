@@ -56,6 +56,94 @@ export const getChatRoomDetails = async (roomId) => {
 };
 
 /**
+ * Check if a chat room is empty (has no online users)
+ * @param {string} roomId - ID of the room to check
+ * @param {Array} onlineUsers - List of currently online users
+ * @returns {Promise<boolean>} Whether the room is empty
+ */
+export const isRoomEmpty = async (roomId, onlineUsers) => {
+  if (!roomId) {
+    return false;
+  }
+
+  try {
+    // Get all members of the room
+    const members = await getChatRoomMembers(roomId);
+
+    if (!members || members.length === 0) {
+      // No members at all, room is definitely empty
+      return true;
+    }
+
+    // Check if any room member is currently online
+    const hasOnlineMembers = members.some((member) =>
+      onlineUsers.some((onlineUser) => onlineUser.id === member.users?.id)
+    );
+
+    // Room is empty if no members are online
+    return !hasOnlineMembers;
+  } catch (error) {
+    console.error(`Error checking if room ${roomId} is empty:`, error);
+    // Default to not empty in case of error to prevent accidental deletion
+    return false;
+  }
+};
+
+/**
+ * Delete a chat room and all its messages
+ * @param {string} roomId - ID of the room to delete
+ * @returns {Promise<boolean>} Success status
+ */
+export const deleteChatRoom = async (roomId) => {
+  if (!roomId) {
+    console.error('No room ID provided for deletion');
+    return false;
+  }
+
+  try {
+    const client = supabaseAdmin || supabase;
+
+    // Delete all messages in the room first
+    const { error: messagesError } = await client
+      .from('chat_messages')
+      .delete()
+      .eq('room_id', roomId);
+
+    if (messagesError) {
+      console.error(`Error deleting messages for room ${roomId}:`, messagesError);
+      return false;
+    }
+
+    // Delete all room memberships
+    const { error: membersError } = await client
+      .from('chat_room_members')
+      .delete()
+      .eq('room_id', roomId);
+
+    if (membersError) {
+      console.error(`Error deleting members for room ${roomId}:`, membersError);
+      return false;
+    }
+
+    // Finally delete the room itself
+    const { error: roomError } = await client
+      .from('chat_rooms')
+      .delete()
+      .eq('id', roomId);
+
+    if (roomError) {
+      console.error(`Error deleting room ${roomId}:`, roomError);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error in deleteChatRoom:`, error);
+    return false;
+  }
+};
+
+/**
  * Check if a user can access a specific chat room
  * @param {string} userId - The ID of the user
  * @param {string} roomId - The ID of the room

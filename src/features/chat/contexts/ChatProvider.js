@@ -2,8 +2,9 @@
  * Context provider for chat functionality
  * This provides chat state and operations throughout the application
  */
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
 import { useChatRooms } from '../hooks/useChatRooms';
+import { useChatRealtime } from '../hooks/useChatRealtime';
 
 // Create context
 const ChatContext = createContext(null);
@@ -17,8 +18,26 @@ const ChatContext = createContext(null);
 export const ChatProvider = ({ children }) => {
   const chatState = useChatRooms();
 
+  // Handle online users changes to check for empty rooms
+  const handleOnlineUsersChange = useCallback((onlineUsers) => {
+    if (onlineUsers && onlineUsers.length >= 0) {
+      // Check and delete empty rooms
+      chatState.checkEmptyRooms(onlineUsers);
+    }
+  }, [chatState]);
+
+  // Subscribe to real-time updates with no specific room ID
+  const realtimeState = useChatRealtime(null, handleOnlineUsersChange);
+
+  // Combine the chat state with the realtime state
+  const combinedState = {
+    ...chatState,
+    onlineUsers: realtimeState.onlineUsers,
+    isSubscribed: realtimeState.isSubscribed
+  };
+
   return (
-    <ChatContext.Provider value={chatState}>
+    <ChatContext.Provider value={combinedState}>
       {children}
     </ChatContext.Provider>
   );

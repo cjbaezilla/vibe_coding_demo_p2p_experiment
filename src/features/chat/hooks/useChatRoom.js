@@ -8,7 +8,8 @@ import {
   fetchChatMessages,
   sendChatMessage,
   joinChatRoom,
-  getChatRoomMembers
+  getChatRoomMembers,
+  getChatRoomDetails
 } from '../services/chatService';
 import { useChatRealtime } from './useChatRealtime';
 
@@ -24,6 +25,24 @@ export const useChatRoom = (roomId) => {
   const [members, setMembers] = useState([]);
   const [hasJoined, setHasJoined] = useState(false);
   const [pendingMessages, setPendingMessages] = useState([]);
+  const [roomExists, setRoomExists] = useState(true);
+
+  // Check if room still exists
+  const checkRoomExists = useCallback(async () => {
+    if (!roomId) {
+      return false;
+    }
+
+    try {
+      const roomDetails = await getChatRoomDetails(roomId);
+      const exists = !!roomDetails;
+      setRoomExists(exists);
+      return exists;
+    } catch (err) {
+      console.error('Error checking if room exists:', err);
+      return false;
+    }
+  }, [roomId]);
 
   // Use the realtime hook to get messages and online status
   const {
@@ -40,6 +59,12 @@ export const useChatRoom = (roomId) => {
     }
 
     try {
+      // First check if the room still exists
+      const exists = await checkRoomExists();
+      if (!exists) {
+        return;
+      }
+
       setLoading(true);
       // We fetch messages but don't use the result directly
       // as the realtime hook will handle the messages
@@ -51,7 +76,7 @@ export const useChatRoom = (roomId) => {
     } finally {
       setLoading(false);
     }
-  }, [roomId, supabaseUser]);
+  }, [roomId, supabaseUser, checkRoomExists]);
 
   // Load room members
   const loadMembers = useCallback(async () => {
@@ -60,6 +85,12 @@ export const useChatRoom = (roomId) => {
     }
 
     try {
+      // First check if the room still exists
+      const exists = await checkRoomExists();
+      if (!exists) {
+        return;
+      }
+
       const membersData = await getChatRoomMembers(roomId);
       setMembers(membersData || []);
 
@@ -71,7 +102,7 @@ export const useChatRoom = (roomId) => {
     } catch (err) {
       console.error('Error loading room members:', err);
     }
-  }, [roomId, supabaseUser]);
+  }, [roomId, supabaseUser, checkRoomExists]);
 
   // Join the current room
   const joinRoom = useCallback(async () => {
@@ -80,6 +111,12 @@ export const useChatRoom = (roomId) => {
     }
 
     try {
+      // First check if the room still exists
+      const exists = await checkRoomExists();
+      if (!exists) {
+        return;
+      }
+
       setLoading(true);
       await joinChatRoom(supabaseUser.id, roomId);
       setHasJoined(true);
@@ -90,11 +127,17 @@ export const useChatRoom = (roomId) => {
     } finally {
       setLoading(false);
     }
-  }, [roomId, supabaseUser, loadMembers]);
+  }, [roomId, supabaseUser, loadMembers, checkRoomExists]);
 
   // Send a message in the current room
   const sendMessage = useCallback(async (messageText) => {
     if (!roomId || !supabaseUser || !messageText.trim()) {
+      return;
+    }
+
+    // First check if the room still exists
+    const exists = await checkRoomExists();
+    if (!exists) {
       return;
     }
 
@@ -129,20 +172,25 @@ export const useChatRoom = (roomId) => {
       console.error('Error sending message:', err);
       setError(err.message);
     }
-  }, [roomId, supabaseUser, addLocalMessage]);
+  }, [roomId, supabaseUser, addLocalMessage, checkRoomExists]);
 
   // Load initial data when component mounts
   useEffect(() => {
     if (roomId && supabaseUser) {
-      loadMessages();
-      loadMembers();
+      // Check if room exists before loading data
+      checkRoomExists().then((exists) => {
+        if (exists) {
+          loadMessages();
+          loadMembers();
+        }
+      });
     }
 
     // Clean up by sending any pending messages if possible
     return () => {
       pendingMessages.forEach(async (msg) => {
         try {
-          if (roomId && supabaseUser) {
+          if (roomId && supabaseUser && roomExists) {
             await sendChatMessage(supabaseUser.id, roomId, msg.text);
           }
         } catch (err) {
@@ -150,7 +198,7 @@ export const useChatRoom = (roomId) => {
         }
       });
     };
-  }, [roomId, supabaseUser, loadMessages, loadMembers, pendingMessages]);
+  }, [roomId, supabaseUser, loadMessages, loadMembers, pendingMessages, roomExists, checkRoomExists]);
 
   // Enhanced members list with online status
   const membersWithStatus = members.map((member) => ({
@@ -170,6 +218,7 @@ export const useChatRoom = (roomId) => {
     joinRoom,
     refreshMembers: loadMembers,
     refreshMessages: loadMessages,
-    hasPendingMessages: pendingMessages.length > 0
+    hasPendingMessages: pendingMessages.length > 0,
+    roomExists
   };
 };

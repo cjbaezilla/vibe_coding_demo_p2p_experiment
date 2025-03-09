@@ -10,9 +10,10 @@ import { updateUserPresence } from '../services/chatService';
 /**
  * Hook for managing real-time chat subscriptions
  * @param {string} roomId - Current room ID to subscribe to (optional)
+ * @param {Function} onOnlineUsersChange - Callback when online users change
  * @returns {object} Real-time state and handlers
  */
-export const useChatRealtime = (roomId = null) => {
+export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
   const { supabaseUser } = useSupabaseUserContext();
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -88,13 +89,18 @@ export const useChatRealtime = (roomId = null) => {
         }
 
         setOnlineUsers(data || []);
+
+        // Call the callback if provided to notify about online users change
+        if (onOnlineUsersChange && Array.isArray(data)) {
+          onOnlineUsersChange(data);
+        }
       } catch (err) {
         console.error('Failed to process presence change:', err);
       }
     };
 
     fetchOnlineUsers();
-  }, []);
+  }, [onOnlineUsersChange]);
 
   // Setup subscriptions when component mounts or roomId changes
   useEffect(() => {
