@@ -70,4 +70,4 @@ $$;
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.get_simple_chat_rooms(UUID) TO authenticated, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.user_can_access_room(UUID, UUID) TO authenticated, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.get_room_details_by_id(UUID) TO authenticated, anon, service_role; 
+GRANT EXECUTE ON FUNCTION public.get_room_details_by_id(UUID) TO authenticated, anon, service_role;

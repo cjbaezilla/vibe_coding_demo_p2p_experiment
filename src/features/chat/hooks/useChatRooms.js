@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseUserContext } from '../../auth/contexts/SupabaseUserProvider';
-import { fetchChatRooms, fetchSimpleChatRooms, createChatRoom } from '../services/chatService';
+import { fetchChatRooms, createChatRoom } from '../services/chatService';
 
 /**
  * Hook for managing chat rooms
@@ -27,8 +27,7 @@ export const useChatRooms = () => {
 
     try {
       setLoading(true);
-      // Try our new function that uses a simpler approach
-      const roomsData = await fetchSimpleChatRooms(supabaseUser.id);
+      const roomsData = await fetchChatRooms(supabaseUser.id);
       setRooms(roomsData || []);
       setError(null);
     } catch (err) {

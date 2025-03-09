@@ -128,7 +128,6 @@ export const useChatRoom = (roomId) => {
     } catch (err) {
       console.error('Error sending message:', err);
       setError(err.message);
-      // We could handle removing the optimistic message here if needed
     }
   }, [roomId, supabaseUser, addLocalMessage]);
 
