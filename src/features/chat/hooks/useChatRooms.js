@@ -109,12 +109,35 @@ export const useChatRooms = () => {
       return;
     }
 
+    // Skip empty room checks if there are no online users detected
+    // This is a safety measure to prevent mass deletion of rooms
+    if (!onlineUsers || !Array.isArray(onlineUsers) || onlineUsers.length === 0) {
+      console.log('Skipping empty room check: No online users detected');
+      return;
+    }
+
+    // Make sure the current user is considered online
+    const currentUserIsOnline = onlineUsers.some((user) => user.id === supabaseUser.id);
+    if (!currentUserIsOnline) {
+      console.log('Skipping empty room check: Current user not detected as online');
+      return;
+    }
+
+    console.log(`Checking ${rooms.length} rooms for emptiness with ${onlineUsers.length} online users`);
+
     try {
       // Check each room
       for (const room of rooms) {
+        // Skip the room the user is currently viewing
+        if (room.id === selectedRoomId) {
+          console.log(`Skipping empty check for selected room: ${room.id}`);
+          continue;
+        }
+
         const isEmpty = await isRoomEmpty(room.id, onlineUsers);
 
         if (isEmpty) {
+          console.log(`Room ${room.id} (${room.name}) is empty, deleting...`);
           // Room is empty, delete it and its messages
           await handleDeleteRoom(room.id);
         }
@@ -122,7 +145,7 @@ export const useChatRooms = () => {
     } catch (err) {
       console.error('Error checking empty rooms:', err);
     }
-  }, [supabaseUser, rooms, handleDeleteRoom]);
+  }, [supabaseUser, rooms, handleDeleteRoom, selectedRoomId]);
 
   // Load rooms when component mounts or user changes
   useEffect(() => {

@@ -76,16 +76,51 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
   const handlePresenceChange = useCallback(() => {
     const fetchOnlineUsers = async () => {
       try {
-        // Query users who have been seen recently
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        // Query users who have been seen recently - use a longer time window for safety
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        console.log(`Fetching online users since: ${tenMinutesAgo}`);
+
         const { data, error: fetchError } = await supabase
           .from('users')
           .select('id, full_name, image_url, last_seen_at')
-          .gte('last_seen_at', fiveMinutesAgo);
+          .gte('last_seen_at', tenMinutesAgo);
 
         if (fetchError) {
           console.error('Error fetching online users:', fetchError);
           return;
+        }
+
+        // Log online user detection
+        if (Array.isArray(data)) {
+          console.log(`Detected ${data.length} online users:`, data.map((u) => ({
+            id: u.id,
+            name: u.full_name,
+            lastSeen: u.last_seen_at
+          })));
+        }
+
+        // Always include the current user as online if they're authenticated
+        if (supabaseUser && Array.isArray(data)) {
+          // Check if the current user is already in the list
+          const currentUserInList = data.some((user) => user.id === supabaseUser.id);
+
+          // If not, add them
+          if (!currentUserInList) {
+            const userWithCurrentTimestamp = {
+              ...supabaseUser,
+              last_seen_at: new Date().toISOString()
+            };
+
+            console.log(`Adding current user to online list:`, {
+              id: supabaseUser.id,
+              name: supabaseUser.full_name
+            });
+
+            data.push(userWithCurrentTimestamp);
+
+            // Also update the user's presence in the database
+            updateUserPresence(supabaseUser.id).catch(console.error);
+          }
         }
 
         setOnlineUsers(data || []);
@@ -100,7 +135,7 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
     };
 
     fetchOnlineUsers();
-  }, [onOnlineUsersChange]);
+  }, [onOnlineUsersChange, supabaseUser]);
 
   // Setup subscriptions when component mounts or roomId changes
   useEffect(() => {
@@ -133,10 +168,12 @@ export const useChatRealtime = (roomId = null, onOnlineUsersChange = null) => {
 
       // 3. Set up interval to update user's own presence
       subscriptions.current.presenceInterval = setInterval(() => {
+        console.log('Updating user presence on interval');
         updateUserPresence(supabaseUser.id).catch(console.error);
-      }, 60000); // Update every minute
+      }, 30000); // Update every 30 seconds instead of every minute
 
       // Immediately update presence on subscription start
+      console.log('Immediately updating user presence on subscription start');
       updateUserPresence(supabaseUser.id).catch(console.error);
 
       // Also immediately fetch online users

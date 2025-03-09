@@ -63,25 +63,54 @@ export const getChatRoomDetails = async (roomId) => {
  */
 export const isRoomEmpty = async (roomId, onlineUsers) => {
   if (!roomId) {
+    console.log('isRoomEmpty: No room ID provided');
+    return false;
+  }
+
+  if (!onlineUsers || !Array.isArray(onlineUsers)) {
+    console.log(`isRoomEmpty: Invalid online users data for room ${roomId}`);
+    return false;
+  }
+
+  // Always consider a room with active online users as non-empty
+  if (onlineUsers.length === 0) {
+    console.log(`isRoomEmpty: No online users detected in the system`);
+    // If there are no online users at all in the system, don't consider rooms empty
+    // This prevents mass deletion of rooms when there's an issue with online detection
     return false;
   }
 
   try {
     // Get all members of the room
     const members = await getChatRoomMembers(roomId);
+    console.log(`isRoomEmpty: Room ${roomId} has ${members?.length || 0} members`);
 
     if (!members || members.length === 0) {
       // No members at all, room is definitely empty
+      console.log(`isRoomEmpty: Room ${roomId} has no members, marking as empty`);
       return true;
     }
 
-    // Check if any room member is currently online
-    const hasOnlineMembers = members.some((member) =>
-      onlineUsers.some((onlineUser) => onlineUser.id === member.users?.id)
+    // Extract user IDs for easier comparison
+    const memberUserIds = members
+      .map((member) => member.users?.id)
+      .filter((id) => id); // Filter out undefined/null
+
+    const onlineUserIds = onlineUsers.map((user) => user.id);
+
+    console.log(`isRoomEmpty: Member user IDs in room ${roomId}:`, memberUserIds);
+    console.log(`isRoomEmpty: Online user IDs:`, onlineUserIds);
+
+    // Check if there's an intersection between member IDs and online user IDs
+    const hasOnlineMembers = memberUserIds.some((memberId) =>
+      onlineUserIds.includes(memberId)
     );
 
     // Room is empty if no members are online
-    return !hasOnlineMembers;
+    const isEmpty = !hasOnlineMembers;
+    console.log(`isRoomEmpty: Room ${roomId} isEmpty=${isEmpty}`);
+
+    return isEmpty;
   } catch (error) {
     console.error(`Error checking if room ${roomId} is empty:`, error);
     // Default to not empty in case of error to prevent accidental deletion
@@ -532,13 +561,35 @@ export const updateUserPresence = async (userId) => {
   }
 
   try {
+    // First check if the user exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking user existence:', checkError);
+      return;
+    }
+
+    // If user doesn't exist, we can't update presence
+    if (!existingUser) {
+      console.error(`User ${userId} doesn't exist in the database`);
+      return;
+    }
+
+    // Update the user's last seen timestamp
+    const timestamp = new Date().toISOString();
     const { error } = await supabase
       .from('users')
-      .update({ last_seen_at: new Date().toISOString() })
+      .update({ last_seen_at: timestamp })
       .eq('id', userId);
 
     if (error) {
       console.error('Error updating user presence:', error);
+    } else {
+      console.log(`Updated presence for user ${userId}: ${timestamp}`);
     }
   } catch (error) {
     console.error('Error in updateUserPresence:', error);
