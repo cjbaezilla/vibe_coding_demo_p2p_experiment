@@ -81,7 +81,7 @@ export const useChatRoom = (roomId) => {
 
     try {
       setLoading(true);
-      await joinChatRoom(roomId);
+      await joinChatRoom(supabaseUser.id, roomId);
       setHasJoined(true);
       await loadMembers();
     } catch (err) {
@@ -121,7 +121,7 @@ export const useChatRoom = (roomId) => {
 
     try {
       // Send to server
-      await sendChatMessage(roomId, messageText);
+      await sendChatMessage(supabaseUser.id, roomId, messageText);
       // Remove from pending messages
       setPendingMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       // The real-time subscription will update with the actual message
@@ -144,7 +144,7 @@ export const useChatRoom = (roomId) => {
       pendingMessages.forEach(async (msg) => {
         try {
           if (roomId && supabaseUser) {
-            await sendChatMessage(roomId, msg.text);
+            await sendChatMessage(supabaseUser.id, roomId, msg.text);
           }
         } catch (err) {
           console.error('Failed to send pending message during cleanup:', err);

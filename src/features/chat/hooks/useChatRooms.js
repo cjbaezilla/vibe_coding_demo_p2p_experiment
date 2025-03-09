@@ -27,7 +27,7 @@ export const useChatRooms = () => {
 
     try {
       setLoading(true);
-      const roomsData = await fetchChatRooms();
+      const roomsData = await fetchChatRooms(supabaseUser.id);
       setRooms(roomsData || []);
       setError(null);
     } catch (err) {
@@ -46,7 +46,7 @@ export const useChatRooms = () => {
 
     try {
       setLoading(true);
-      const newRoom = await createChatRoom(name, description, isPrivate);
+      const newRoom = await createChatRoom(supabaseUser.id, name, description, isPrivate);
 
       // Update local state
       setRooms((prevRooms) => [newRoom, ...prevRooms]);

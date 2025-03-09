@@ -127,11 +127,11 @@ export const useChatRealtime = (roomId = null) => {
 
       // 3. Set up interval to update user's own presence
       subscriptions.current.presenceInterval = setInterval(() => {
-        updateUserPresence().catch(console.error);
+        updateUserPresence(supabaseUser.id).catch(console.error);
       }, 60000); // Update every minute
 
       // Immediately update presence on subscription start
-      updateUserPresence().catch(console.error);
+      updateUserPresence(supabaseUser.id).catch(console.error);
 
       // Also immediately fetch online users
       handlePresenceChange();
