@@ -19,6 +19,12 @@ const ChatPageContent = () => {
     selectRoom
   } = useChatContext();
 
+  // Enhanced select room handler with logging
+  const handleSelectRoom = (roomId) => {
+    console.log(`ChatPage: Selecting room ${roomId}`);
+    selectRoom(roomId);
+  };
+
   return (
     <div className="flex h-full">
       {/* Sidebar with room list */}
@@ -26,7 +32,7 @@ const ChatPageContent = () => {
         <ChatRoomList
           rooms={rooms}
           selectedRoomId={selectedRoomId}
-          onSelectRoom={selectRoom}
+          onSelectRoom={handleSelectRoom}
           onCreateRoom={createRoom}
           loading={loading}
         />

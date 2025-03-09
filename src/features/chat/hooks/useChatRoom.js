@@ -250,6 +250,21 @@ export const useChatRoom = (roomId) => {
     }
   }, [roomId, supabaseUser, addLocalMessage, checkRoomExists]);
 
+  // Reset state when roomId changes
+  useEffect(() => {
+    // Only reset if we have a roomId
+    if (roomId) {
+      // Reset all state variables when roomId changes
+      setLoading(true);
+      setError(null);
+      setMembers([]);
+      setHasJoined(false);
+      setPendingMessages([]);
+      setRoomExists(true);
+    }
+    // Initial state will be set by subsequent effects
+  }, [roomId]);
+
   // Load initial data when component mounts
   useEffect(() => {
     if (roomId && supabaseUser) {

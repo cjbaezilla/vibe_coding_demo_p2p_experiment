@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { useSupabaseUserContext } from '../../auth/contexts/SupabaseUserProvider';
-import { updateUserPresence } from '../services/chatService';
+import { updateUserPresence, fetchChatMessages } from '../services/chatService';
 
 /**
  * Helper function to check if two messages have the same content
@@ -176,6 +176,14 @@ export const useChatRealtime = (
       return;
     }
 
+    // Get current message count for use in effect
+    const hasExistingMessages = messages.length > 0;
+
+    // Clear messages when roomId changes - but only once
+    if (hasExistingMessages) {
+      setMessages([]);
+    }
+
     // Clean up any existing subscriptions
     cleanupSubscriptions();
 
@@ -219,38 +227,40 @@ export const useChatRealtime = (
       updatePresence();
 
       // 5. If we have a roomId, load existing messages from the database
+      let isMounted = true;
       if (roomId) {
-        // Dynamic import to avoid circular dependencies
-        import('../services/chatService')
-          .then((module) => {
-            const fetchChatMessages = module.fetchChatMessages;
-
-            // Load existing messages
-            return fetchChatMessages(roomId);
-          })
+        // Load existing messages but with a guard for component unmounting
+        fetchChatMessages(roomId)
           .then((initialMessages) => {
-            // Only set messages if we have data and we're still subscribed to the same room
-            if (initialMessages && initialMessages.length > 0 && roomId) {
+            // Only update if component is still mounted and we have the same roomId
+            if (isMounted && initialMessages && initialMessages.length > 0) {
               // Set all messages at once to avoid multiple renders
               setMessages(initialMessages);
             }
           })
           .catch((err) => {
-            console.error('Error loading initial messages:', err);
-            setError(err.message);
+            if (isMounted) {
+              console.error('Error loading initial messages:', err);
+              setError(err.message);
+            }
           });
       }
 
       setIsSubscribed(true);
       setError(null);
+
+      // Cleanup on unmount or when roomId changes
+      return () => {
+        isMounted = false;
+        cleanupSubscriptions();
+      };
     } catch (err) {
       console.error('Error setting up real-time subscriptions:', err);
       setError(err.message);
       cleanupSubscriptions();
+      return cleanupSubscriptions;
     }
-
-    // Cleanup on unmount or when roomId changes
-    return cleanupSubscriptions;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     supabaseUser,
     roomId,
@@ -259,6 +269,7 @@ export const useChatRealtime = (
     handleMembershipChange,
     cleanupSubscriptions,
     updatePresence
+    // We intentionally exclude messages to prevent infinite loops
   ]);
 
   // Add message to local state optimistically (before server confirms)

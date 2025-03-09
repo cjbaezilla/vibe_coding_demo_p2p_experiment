@@ -72,8 +72,13 @@ export const useChatRooms = () => {
 
   // Select a room
   const selectRoom = useCallback((roomId) => {
-    setSelectedRoomId(roomId);
-  }, []);
+    // Only update if the room ID actually changed
+    if (roomId !== selectedRoomId) {
+      console.log(`Switching from room ${selectedRoomId} to ${roomId}`);
+      // Set the new room ID directly
+      setSelectedRoomId(roomId);
+    }
+  }, [selectedRoomId]);
 
   // Delete a chat room and its messages
   const handleDeleteRoom = useCallback(async (roomId) => {

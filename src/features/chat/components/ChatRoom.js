@@ -1,7 +1,7 @@
 /**
  * Main component for a chat room that integrates all chat subcomponents
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useChatRoom } from '../hooks/useChatRoom';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
@@ -14,6 +14,11 @@ import OnlineUsersList from './OnlineUsersList';
  * @returns {React.ReactElement} The component
  */
 const ChatRoom = ({ roomId }) => {
+  // Log roomId changes for debugging
+  useEffect(() => {
+    console.log(`ChatRoom rendering with roomId: ${roomId}`);
+  }, [roomId]);
+
   const {
     messages,
     members,
