@@ -131,6 +131,7 @@ CREATE POLICY "Users can view room members of rooms they can access"
         EXISTS (
           SELECT 1 FROM public.chat_room_members m
           WHERE m.room_id = chat_room_members.room_id AND m.user_id = auth.uid()
+            AND m.id != chat_room_members.id
         )
       )
     )

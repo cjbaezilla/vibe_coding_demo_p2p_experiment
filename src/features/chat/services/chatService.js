@@ -9,7 +9,14 @@ import { supabase } from '../../../supabaseClient';
  * @returns {Promise<Array>} List of chat rooms
  */
 export const fetchChatRooms = async () => {
-  const { data, error } = await supabase
+  const userId = supabase.auth.user()?.id;
+
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // First fetch public rooms
+  const { data: publicRooms, error: publicError } = await supabase
     .from('chat_rooms')
     .select(`
       id,
@@ -20,13 +27,35 @@ export const fetchChatRooms = async () => {
       created_at,
       updated_at
     `)
+    .eq('is_private', false)
     .order('updated_at', { ascending: false });
 
-  if (error) {
-    throw new Error(`Error fetching chat rooms: ${error.message}`);
+  if (publicError) {
+    throw new Error(`Error fetching public chat rooms: ${publicError.message}`);
   }
 
-  return data;
+  // Then fetch rooms user has created or is a member of
+  const { data: privateRooms, error: privateError } = await supabase
+    .from('chat_rooms')
+    .select(`
+      id,
+      name,
+      description,
+      created_by,
+      is_private,
+      created_at,
+      updated_at
+    `)
+    .eq('is_private', true)
+    .or(`created_by.eq.${userId},chat_room_members.user_id.eq.${userId}`)
+    .order('updated_at', { ascending: false });
+
+  if (privateError) {
+    throw new Error(`Error fetching private chat rooms: ${privateError.message}`);
+  }
+
+  // Combine results
+  return [...(publicRooms || []), ...(privateRooms || [])];
 };
 
 /**
