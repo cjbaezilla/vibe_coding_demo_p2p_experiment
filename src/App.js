@@ -11,6 +11,7 @@ import AboutPage from './features/about/AboutPage';
 import LoginPage from './features/auth/LoginPage';
 import SignupPage from './features/auth/SignupPage';
 import ProfilePage from './features/auth/ProfilePage';
+import ChatPage from './features/chat/ChatPage';
 
 // Auth provider
 import ClerkProvider from './features/auth/contexts/ClerkProvider';
@@ -30,13 +31,21 @@ function App() {
             <Route path="about" element={<AboutPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
-            <Route 
-              path="profile" 
+            <Route
+              path="profile"
               element={
                 <ProtectedRoute>
                   <ProfilePage />
                 </ProtectedRoute>
-              } 
+              }
+            />
+            <Route
+              path="chat"
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
+                </ProtectedRoute>
+              }
             />
           </Route>
         </Routes>
