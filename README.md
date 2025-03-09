@@ -5,6 +5,8 @@ ConnectHub is a modern web application that combines Clerk authentication with S
 ## Screenshots
 
 ![ConnectHub Homepage](./public/connecthub-screenshot.jpg)
+![ConnectHub User Page](./public/connecthub-screenshot2.jpg)
+![ConnectHub Chat](./public/connecthub-screenshot3.jpg)
 
 *ConnectHub homepage showing the colorful chat interface with vibrant message bubbles and call-to-action buttons.*
 
