@@ -218,6 +218,29 @@ export const useChatRealtime = (
       // Immediately update presence on subscription start
       updatePresence();
 
+      // 5. If we have a roomId, load existing messages from the database
+      if (roomId) {
+        // Dynamic import to avoid circular dependencies
+        import('../services/chatService')
+          .then((module) => {
+            const fetchChatMessages = module.fetchChatMessages;
+
+            // Load existing messages
+            return fetchChatMessages(roomId);
+          })
+          .then((initialMessages) => {
+            // Only set messages if we have data and we're still subscribed to the same room
+            if (initialMessages && initialMessages.length > 0 && roomId) {
+              // Set all messages at once to avoid multiple renders
+              setMessages(initialMessages);
+            }
+          })
+          .catch((err) => {
+            console.error('Error loading initial messages:', err);
+            setError(err.message);
+          });
+      }
+
       setIsSubscribed(true);
       setError(null);
     } catch (err) {

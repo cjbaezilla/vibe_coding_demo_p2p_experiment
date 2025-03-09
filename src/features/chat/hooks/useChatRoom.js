@@ -107,9 +107,19 @@ export const useChatRoom = (roomId) => {
       }
 
       setLoading(true);
-      // We fetch messages but don't use the result directly
-      // as the realtime hook will handle the messages
-      await fetchChatMessages(roomId);
+
+      // Fetch messages from the database
+      const fetchedMessages = await fetchChatMessages(roomId);
+
+      // We'll use the messages directly but also let the realtime hook know about them
+      // This ensures we have immediate data display but also maintain real-time updates
+      if (fetchedMessages && fetchedMessages.length > 0) {
+        // Apply each message individually to maintain proper order and handle deduplication
+        fetchedMessages.forEach((message) => {
+          addLocalMessage(message);
+        });
+      }
+
       setError(null);
     } catch (err) {
       console.error('Error loading messages:', err);
@@ -117,7 +127,7 @@ export const useChatRoom = (roomId) => {
     } finally {
       setLoading(false);
     }
-  }, [roomId, supabaseUser, checkRoomExists]);
+  }, [roomId, supabaseUser, checkRoomExists, addLocalMessage]);
 
   // Join the current room
   const joinRoom = useCallback(async () => {

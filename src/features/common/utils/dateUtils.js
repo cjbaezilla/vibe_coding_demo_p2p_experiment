@@ -14,14 +14,14 @@ export const formatTimeSince = (dateString) => {
 
   const createdAt = new Date(dateString);
   const now = new Date();
-  
+
   const seconds = Math.floor((now - createdAt) / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
   const months = Math.floor(days / 30);
   const years = Math.floor(days / 365);
-  
+
   if (years > 0) {
     return `${years} ${years === 1 ? 'year' : 'years'} ago`;
   } else if (months > 0) {
@@ -35,4 +35,4 @@ export const formatTimeSince = (dateString) => {
   } else {
     return 'just now';
   }
-}; 
+};

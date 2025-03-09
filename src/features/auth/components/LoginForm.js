@@ -2,8 +2,10 @@ import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
 import AuthFormContainer from './AuthFormContainer';
 
-const LoginForm = () => {
-  return (
+/**
+ *
+ */
+const LoginForm = () => (
     <AuthFormContainer title="Sign In">
       <SignIn
         routing="path"
@@ -13,6 +15,5 @@ const LoginForm = () => {
       />
     </AuthFormContainer>
   );
-};
 
-export default LoginForm; 
+export default LoginForm;

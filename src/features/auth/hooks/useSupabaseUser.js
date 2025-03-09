@@ -32,16 +32,16 @@ export const useSupabaseUser = () => {
     const syncUser = async () => {
       try {
         setIsLoading(true);
-        
+
         // First try to get the existing user
         let userRecord = await getUserByClerkId(clerkUser.id);
-        
+
         // If no user found or data needs updating, sync with Supabase
-        if (!userRecord || 
+        if (!userRecord ||
             userRecord.email !== clerkUser.primaryEmailAddress?.emailAddress ||
             userRecord.full_name !== clerkUser.fullName ||
             userRecord.image_url !== clerkUser.imageUrl) {
-          
+
           try {
             userRecord = await syncUserWithSupabase(clerkUser);
           } catch (syncError) {
@@ -49,7 +49,7 @@ export const useSupabaseUser = () => {
             // If sync fails, still use whatever user record we might have
           }
         }
-        
+
         setSupabaseUser(userRecord);
         setError(null);
       } catch (err) {
@@ -84,4 +84,4 @@ export const useSupabaseUser = () => {
       }
     }
   };
-}; 
+};

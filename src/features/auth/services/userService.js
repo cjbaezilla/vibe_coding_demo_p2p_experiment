@@ -105,14 +105,14 @@ export const getUserByClerkId = async (clerkId) => {
     if (error) {
       // Log the full error for debugging
       console.error('Error fetching user by Clerk ID:', error);
-      
+
       // Check for different error scenarios
       if (error.code === 'PGRST116' || error.code === '406') {
         // No rows returned or API format issue
         console.error('User not found or API formatting issue:', error.message);
         return null;
       }
-      
+
       throw error;
     }
 
@@ -122,4 +122,4 @@ export const getUserByClerkId = async (clerkId) => {
     // Don't throw, just return null to allow UI to handle gracefully
     return null;
   }
-}; 
+};

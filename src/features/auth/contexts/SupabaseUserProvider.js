@@ -16,7 +16,7 @@ const SupabaseUserContext = createContext(null);
  */
 export const SupabaseUserProvider = ({ children }) => {
   const supabaseUserState = useSupabaseUser();
-  
+
   return (
     <SupabaseUserContext.Provider value={supabaseUserState}>
       {children}
@@ -30,10 +30,10 @@ export const SupabaseUserProvider = ({ children }) => {
  */
 export const useSupabaseUserContext = () => {
   const context = useContext(SupabaseUserContext);
-  
+
   if (context === null) {
     throw new Error('useSupabaseUserContext must be used within a SupabaseUserProvider');
   }
-  
+
   return context;
-}; 
+};

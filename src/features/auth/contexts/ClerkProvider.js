@@ -12,7 +12,7 @@ import { clerkConfig, validateEnv } from '../../../config/env';
 const ClerkProvider = ({ children }) => {
   // Validate environment variables
   validateEnv();
-  
+
   return (
     <ClerkProviderOriginal publishableKey={clerkConfig.publishableKey}>
       <SupabaseUserProvider>
@@ -22,4 +22,4 @@ const ClerkProvider = ({ children }) => {
   );
 };
 
-export default ClerkProvider; 
+export default ClerkProvider;

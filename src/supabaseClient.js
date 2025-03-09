@@ -24,7 +24,7 @@ const clientOptions = {
 
 // Regular client with anonymous access
 export const supabase = createClient(
-  supabaseConfig.url, 
+  supabaseConfig.url,
   supabaseConfig.anonKey,
   clientOptions
 )
@@ -33,8 +33,8 @@ export const supabase = createClient(
 // Only use this client for specific operations that require elevated permissions
 export const supabaseAdmin = supabaseConfig.serviceKey
   ? createClient(
-      supabaseConfig.url, 
+      supabaseConfig.url,
       supabaseConfig.serviceKey,
       clientOptions
     )
-  : null 
+  : null
