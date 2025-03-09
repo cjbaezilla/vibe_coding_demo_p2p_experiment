@@ -23,4 +23,30 @@ BEGIN
   
   ORDER BY updated_at DESC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER; 
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Make the helper function return a boolean instead of DECLARE variables
+CREATE OR REPLACE FUNCTION public.user_can_access_room(user_uuid UUID, room_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  -- Return true if user can access the room:
+  -- 1. Room is public, or
+  -- 2. User created the room, or
+  -- 3. User is a member of the room
+  RETURN EXISTS (
+    SELECT 1 FROM public.chat_rooms 
+    WHERE id = room_uuid AND (
+      is_private = false OR 
+      created_by = user_uuid OR
+      EXISTS (
+        SELECT 1 FROM public.chat_room_members
+        WHERE room_id = room_uuid AND user_id = user_uuid
+      )
+    )
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permissions on the functions
+GRANT EXECUTE ON FUNCTION public.get_accessible_rooms_for_user TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_can_access_room TO anon, authenticated, service_role; 

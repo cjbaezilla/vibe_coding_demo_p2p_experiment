@@ -140,21 +140,38 @@ export const sendChatMessage = async (userId, roomId, message) => {
     throw new Error('User not authenticated');
   }
 
-  const { data, error } = await supabase
-    .from('chat_messages')
-    .insert({
-      room_id: roomId,
-      user_id: userId,
-      message
-    })
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(`Error sending message: ${error.message}`);
+  if (!supabaseAdmin) {
+    throw new Error('Admin client not available for sending message');
   }
 
-  return data;
+  try {
+    // First verify user's access to the room using the helper function
+    const hasAccess = await canAccessRoom(userId, roomId);
+
+    if (!hasAccess) {
+      throw new Error('You do not have access to this room');
+    }
+
+    // Use admin client to insert the message
+    const { data, error } = await supabaseAdmin
+      .from('chat_messages')
+      .insert({
+        room_id: roomId,
+        user_id: userId,
+        message
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Error sending message: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in sendChatMessage:', error);
+    throw error;
+  }
 };
 
 /**
