@@ -22,7 +22,8 @@ const ChatRoom = ({ roomId }) => {
     loading,
     error,
     sendMessage,
-    joinRoom
+    joinRoom,
+    leaveRoom
   } = useChatRoom(roomId);
 
   if (!roomId) {
@@ -73,6 +74,22 @@ const ChatRoom = ({ roomId }) => {
           </div>
         )}
 
+        {/* Leave Room Banner (if joined) */}
+        {hasJoined && (
+          <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end items-center">
+              <button
+                onClick={leaveRoom}
+                disabled={loading}
+                className="bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-4 rounded text-sm
+                         disabled:opacity-50"
+              >
+                {loading ? 'Leaving...' : 'Leave Room'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Message List */}
         <ChatMessageList messages={messages} loading={loading} />
 
@@ -93,7 +110,17 @@ const ChatRoom = ({ roomId }) => {
           {/* Room Members Section (if joined) */}
           {hasJoined && members.length > 0 && (
             <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Room Members</h2>
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Room Members</h2>
+                <button
+                  onClick={leaveRoom}
+                  disabled={loading}
+                  className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium py-1 px-2 rounded
+                           focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  {loading ? 'Leaving...' : 'Leave'}
+                </button>
+              </div>
               <ul className="space-y-2">
                 {members.map((member) => (
                   <li key={member.id} className="flex items-center">

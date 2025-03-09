@@ -595,3 +595,40 @@ export const updateUserPresence = async (userId) => {
     console.error('Error in updateUserPresence:', error);
   }
 };
+
+/**
+ * Remove a user from a chat room (leave the room)
+ * @param {string} userId - The ID of the user leaving the room
+ * @param {string} roomId - ID of the room to leave
+ * @returns {Promise<boolean>} Success status
+ */
+export const leaveChatRoom = async (userId, roomId) => {
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  if (!roomId) {
+    throw new Error('Room ID is required');
+  }
+
+  try {
+    const client = supabaseAdmin || supabase;
+
+    // Delete the membership record
+    const { error } = await client
+      .from('chat_room_members')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error(`Error leaving chat room ${roomId}:`, error);
+      throw new Error(`Error leaving chat room: ${error.message}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in leaveChatRoom:', error);
+    throw error;
+  }
+};

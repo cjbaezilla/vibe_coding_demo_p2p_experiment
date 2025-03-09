@@ -8,6 +8,7 @@ import {
   fetchChatMessages,
   sendChatMessage,
   joinChatRoom,
+  leaveChatRoom,
   getChatRoomMembers,
   getChatRoomDetails
 } from '../services/chatService';
@@ -129,6 +130,31 @@ export const useChatRoom = (roomId) => {
     }
   }, [roomId, supabaseUser, loadMembers, checkRoomExists]);
 
+  // Leave the current room
+  const leaveRoom = useCallback(async () => {
+    if (!roomId || !supabaseUser) {
+      return;
+    }
+
+    try {
+      // First check if the room still exists
+      const exists = await checkRoomExists();
+      if (!exists) {
+        return;
+      }
+
+      setLoading(true);
+      await leaveChatRoom(supabaseUser.id, roomId);
+      setHasJoined(false);
+      await loadMembers();
+    } catch (err) {
+      console.error('Error leaving room:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [roomId, supabaseUser, loadMembers, checkRoomExists]);
+
   // Send a message in the current room
   const sendMessage = useCallback(async (messageText) => {
     if (!roomId || !supabaseUser || !messageText.trim()) {
@@ -216,6 +242,7 @@ export const useChatRoom = (roomId) => {
     isSubscribed,
     sendMessage,
     joinRoom,
+    leaveRoom,
     refreshMembers: loadMembers,
     refreshMessages: loadMessages,
     hasPendingMessages: pendingMessages.length > 0,
