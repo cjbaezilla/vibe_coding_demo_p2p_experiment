@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
+import { useAuth, SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 
 const MainLayout = () => {
   return (
@@ -8,13 +9,29 @@ const MainLayout = () => {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">React App</h1>
           <nav>
-            <ul className="flex space-x-4">
+            <ul className="flex space-x-4 items-center">
               <li>
                 <Link to="/" className="hover:text-gray-300">Home</Link>
               </li>
               <li>
                 <Link to="/about" className="hover:text-gray-300">About</Link>
               </li>
+              <SignedIn>
+                <li>
+                  <Link to="/profile" className="hover:text-gray-300">Profile</Link>
+                </li>
+                <li className="ml-4">
+                  <UserButton afterSignOutUrl="/" />
+                </li>
+              </SignedIn>
+              <SignedOut>
+                <li>
+                  <Link to="/login" className="hover:text-gray-300">Login</Link>
+                </li>
+                <li>
+                  <Link to="/signup" className="hover:text-gray-300">Sign Up</Link>
+                </li>
+              </SignedOut>
             </ul>
           </nav>
         </div>
