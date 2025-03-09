@@ -232,19 +232,14 @@ export const useChatRoom = (roomId) => {
       });
     }
 
-    // Clean up by sending any pending messages if possible
+    // Cleanup function - we're disabling sending pending messages on cleanup
+    // to prevent duplicates when components unmount/remount
     return () => {
-      pendingMessages.forEach(async (msg) => {
-        try {
-          if (roomId && supabaseUser && roomExists) {
-            await sendChatMessage(supabaseUser.id, roomId, msg.text);
-          }
-        } catch (err) {
-          console.error('Failed to send pending message during cleanup:', err);
-        }
-      });
+      // Just clear the pending messages instead of sending them
+      // This prevents duplicate messages when navigating between rooms
+      setPendingMessages([]);
     };
-  }, [roomId, supabaseUser, loadMembers, pendingMessages, roomExists, checkRoomExists]);
+  }, [roomId, supabaseUser, loadMembers, roomExists, checkRoomExists]);
 
   // Enhanced members list with online status
   const membersWithStatus = members.map((member) => ({

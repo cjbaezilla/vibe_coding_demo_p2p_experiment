@@ -68,29 +68,36 @@ export const useChatRealtime = (
 
   // Replace a temporary message with a real one or add a new message
   const updateMessageList = useCallback((newMessage, tempIdPrefix = 'temp-') => {
+    if (!newMessage || !newMessage.id) {
+      return; // Skip invalid messages
+    }
+
     setMessages((prevMessages) => {
-      // Check if this exact message already exists (by ID)
+      // 1. Check if this exact message ID already exists
       if (prevMessages.some((msg) => msg.id === newMessage.id)) {
-        return prevMessages;
+        return prevMessages; // Message with this ID already exists
       }
 
-      // Additional check for duplicates by content and timestamp within a small window (5 seconds)
-      // This helps catch potential duplicates from different sources
+      // 2. Check for duplicate by content with strict criteria
       const isDuplicate = prevMessages.some((msg) =>
-        msg.id !== newMessage.id && // Different ID
-        msg.user_id === newMessage.user_id && // Same user
-        msg.message === newMessage.message && // Same message content
-        msg.room_id === newMessage.room_id && // Same room
-        // If both have created_at timestamps, check if they're close in time
+        // Different ID but same essential content
+        msg.id !== newMessage.id &&
+        // Same user
+        msg.user_id === newMessage.user_id &&
+        // Same message content
+        msg.message === newMessage.message &&
+        // Same room
+        msg.room_id === newMessage.room_id &&
+        // If both have created_at timestamps, check if they're close in time (within 5 seconds)
         (msg.created_at && newMessage.created_at &&
           Math.abs(new Date(msg.created_at) - new Date(newMessage.created_at)) < 5000)
       );
 
       if (isDuplicate) {
-        return prevMessages;
+        return prevMessages; // Skip adding duplicate messages
       }
 
-      // Find a temporary message to replace
+      // 3. Look for a temporary message to replace (from optimistic updates)
       const tempMessageIndex = prevMessages.findIndex((msg) =>
         msg.id.toString().startsWith(tempIdPrefix) && isSameMessageContent(msg, newMessage)
       );
@@ -102,7 +109,7 @@ export const useChatRealtime = (
         return updatedMessages;
       }
 
-      // Otherwise, add as a new message
+      // 4. Otherwise, add as a new message
       return [newMessage, ...prevMessages];
     });
   }, []);
@@ -185,7 +192,7 @@ export const useChatRealtime = (
     }
   }, [onMembershipChange]);
 
-  // Setup subscriptions when component mounts or roomId changes
+  // Set up subscriptions when component mounts or roomId changes
   useEffect(() => {
     // Only proceed if we have a valid user
     if (!supabaseUser) {
@@ -204,11 +211,17 @@ export const useChatRealtime = (
     cleanupSubscriptions();
 
     try {
-      // 1. Subscribe to new messages
+      // 1. Subscribe to new messages with specific room filter if we have a roomId
+      // This ensures we only get events for this specific room
       subscriptions.current.messages = supabase
         .channel('public:chat_messages')
         .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            ...(roomId ? { filter: `room_id=eq.${roomId}` } : {})
+          },
           handleNewMessage
         )
         .subscribe();

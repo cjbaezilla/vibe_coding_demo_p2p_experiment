@@ -502,6 +502,9 @@ export const fetchChatMessages = async (roomId, limit = 50, offset = 0) => {
   }
 };
 
+// Create a simple memory cache to prevent duplicate message sends in short time periods
+const recentMessages = new Map();
+
 /**
  * Send a new message to a chat room
  * @param {string} userId - The ID of the current user
@@ -515,6 +518,19 @@ export const sendChatMessage = async (userId, roomId, message) => {
   }
 
   try {
+    // Create a unique key for this message combination
+    const messageKey = `${userId}-${roomId}-${message}`;
+
+    // Check if we've just sent this exact message in the last 5 seconds
+    const now = Date.now();
+    if (recentMessages.has(messageKey)) {
+      const timeSinceLastSend = now - recentMessages.get(messageKey);
+      if (timeSinceLastSend < 5000) { // 5 seconds
+        console.log('Preventing duplicate message send');
+        throw new Error('Please wait before sending the same message again');
+      }
+    }
+
     // Verify user's access to the room
     const hasAccess = await canAccessRoom(userId, roomId);
 
@@ -537,6 +553,17 @@ export const sendChatMessage = async (userId, roomId, message) => {
 
     if (error) {
       throw new Error(`Error sending message: ${error.message}`);
+    }
+
+    // Store this message in our recent messages cache
+    recentMessages.set(messageKey, now);
+
+    // Clean up old entries from the cache
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
+    for (const [key, timestamp] of recentMessages.entries()) {
+      if (timestamp < fiveMinutesAgo) {
+        recentMessages.delete(key);
+      }
     }
 
     return data;
