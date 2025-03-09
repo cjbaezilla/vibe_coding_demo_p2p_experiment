@@ -1,8 +1,231 @@
 import React from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
+import styled from 'styled-components';
 import { useSupabaseUserContext } from './contexts/SupabaseUserProvider';
 import { formatTimeSince } from '../common/utils/dateUtils';
+import {
+  Title, Subtitle, Text, Card, PrimaryButton, OutlineButton,
+  Section, Grid, Flex, PageContainer, Bubble, GradientText,
+  SlideUp, FadeIn, Badge, Divider
+} from '../common/components/StyledComponents';
+
+// Additional styled components for ProfilePage
+const ProfileHeader = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.space.xl};
+  position: relative;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+  }
+`;
+
+const ProfileImage = styled.div`
+  width: 120px;
+  height: 120px;
+  margin-right: ${({ theme }) => theme.space.xl};
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid white;
+  box-shadow: ${({ theme }) => theme.shadows.md};
+  position: relative;
+  background: linear-gradient(45deg, 
+    ${({ theme }) => theme.colors.primary},
+    ${({ theme }) => theme.colors.accent1}
+  );
+  
+  @media (max-width: 768px) {
+    margin: 0 auto ${({ theme }) => theme.space.md};
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, 
+      ${({ theme }) => theme.colors.primary},
+      ${({ theme }) => theme.colors.secondary},
+      ${({ theme }) => theme.colors.tertiary},
+      ${({ theme }) => theme.colors.accent1}
+    );
+    z-index: -1;
+    animation: rotate 8s linear infinite;
+  }
+`;
+
+const ProfileInfo = styled.div`
+  flex: 1;
+`;
+
+const UserName = styled.h2`
+  font-size: ${({ theme }) => theme.fontSizes['3xl']};
+  font-weight: 700;
+  color: ${({ theme }) => theme.colors.text.primary};
+  margin-bottom: ${({ theme }) => theme.space.sm};
+`;
+
+const UserEmail = styled.p`
+  font-size: ${({ theme }) => theme.fontSizes.lg};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  margin-bottom: ${({ theme }) => theme.space.md};
+`;
+
+const QuickActionsSection = styled(Section)`
+  margin-bottom: ${({ theme }) => theme.space.xl};
+`;
+
+const ActionButton = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${({ theme }) => theme.space.md};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-weight: 600;
+  transition: ${({ theme }) => theme.transitions.bounce};
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  
+  svg {
+    margin-right: ${({ theme }) => theme.space.sm};
+    width: 24px;
+    height: 24px;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: ${({ theme }) => theme.shadows.md};
+    
+    &::before {
+      transform: translateX(0);
+    }
+  }
+`;
+
+const ChatButton = styled(ActionButton)`
+  background: linear-gradient(45deg, 
+    ${({ theme }) => theme.colors.primary}, 
+    ${({ theme }) => theme.colors.accent1}
+  );
+  color: white;
+`;
+
+const SettingsButton = styled(ActionButton)`
+  background: linear-gradient(45deg, 
+    ${({ theme }) => theme.colors.tertiary}, 
+    ${({ theme }) => theme.colors.secondary}
+  );
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
+const InfoCard = styled(Card)`
+  height: 100%;
+  
+  &:hover {
+    transform: translateY(-5px);
+  }
+`;
+
+const InfoCardTitle = styled(Subtitle)`
+  position: relative;
+  display: inline-block;
+  margin-bottom: ${({ theme }) => theme.space.md};
+  padding-bottom: ${({ theme }) => theme.space.sm};
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(
+      to right,
+      ${({ theme }) => theme.colors.primary},
+      ${({ theme }) => theme.colors.secondary}
+    );
+    border-radius: ${({ theme }) => theme.borderRadius.full};
+  }
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  padding: ${({ theme }) => theme.space.sm} 0;
+  border-bottom: 1px dashed ${({ theme }) => theme.colors.accent3};
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const InfoLabel = styled.span`
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.text.primary};
+  margin-right: ${({ theme }) => theme.space.sm};
+  min-width: 120px;
+`;
+
+const InfoValue = styled.span`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  flex: 1;
+`;
+
+const AlertBox = styled.div`
+  padding: ${({ theme }) => theme.space.md};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  margin-bottom: ${({ theme }) => theme.space.md};
+  
+  &.error {
+    background-color: ${({ theme }) => theme.colors.error}20;
+    color: ${({ theme }) => theme.colors.error};
+  }
+  
+  &.warning {
+    background-color: ${({ theme }) => theme.colors.warning}20;
+    color: ${({ theme }) => theme.colors.warning};
+  }
+`;
+
+const AlertTitle = styled.p`
+  font-weight: 600;
+  margin-bottom: ${({ theme }) => theme.space.xs};
+`;
+
+const AlertMessage = styled.p`
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+`;
+
+const FooterText = styled(Text)`
+  text-align: center;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: ${({ theme }) => theme.fontSizes.sm};
+  margin-top: ${({ theme }) => theme.space.xl};
+`;
 
 /**
  * Component that displays user profile information
@@ -18,123 +241,156 @@ const ProfilePage = () => {
   } = useSupabaseUserContext();
 
   if (!user) {
-    return <div className="container mx-auto px-4 py-8">Loading user data...</div>;
+    return (
+      <PageContainer>
+        <Flex align="center" justify="center" style={{ height: '300px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spin" style={{ marginBottom: '1rem' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="2" x2="12" y2="6" />
+                <line x1="12" y1="18" x2="12" y2="22" />
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                <line x1="2" y1="12" x2="6" y2="12" />
+                <line x1="18" y1="12" x2="22" y2="12" />
+                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+                <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+              </svg>
+            </div>
+            <Text>Loading user data...</Text>
+          </div>
+        </Flex>
+      </PageContainer>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Your Profile</h1>
+    <PageContainer>
+      <SlideUp>
+        <Title center>Your <GradientText>Profile</GradientText></Title>
+      </SlideUp>
 
-      <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto mb-8">
-        <div className="flex items-center mb-6">
-          {user.imageUrl && (
-            <img
-              src={user.imageUrl}
-              alt="Profile"
-              className="w-16 h-16 rounded-full mr-4"
-            />
-          )}
-          <div>
-            <h2 className="text-xl font-bold">{user.fullName || 'User'}</h2>
-            <p className="text-gray-600">{user.primaryEmailAddress?.emailAddress}</p>
-          </div>
-        </div>
+      <FadeIn>
+        <Card>
+          {/* Background bubbles */}
+          <Bubble className="medium" style={{ top: '20%', right: '10%', opacity: '0.05' }} />
+          <Bubble className="small" style={{ bottom: '20%', left: '5%', opacity: '0.05' }} />
 
-        {/* Quick Actions Section */}
-        <div className="mb-8">
-          <h3 className="font-bold text-lg mb-4 border-b pb-2">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link
-              to="/chat"
-              className="flex items-center justify-center py-3 px-4 bg-blue-600 hover:bg-blue-700
-                text-white rounded-lg transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2
-                    11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                  clipRule="evenodd"
+          <ProfileHeader>
+            <ProfileImage>
+              {user.imageUrl && (
+                <img
+                  src={user.imageUrl}
+                  alt="Profile"
                 />
-              </svg>
-              Real-time Chat
-              <span className="ml-2 inline-block w-2 h-2 rounded-full bg-green-500" />
-            </Link>
-            <button
-              className="py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-              onClick={() => {/* Additional action placeholder */}}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2 inline"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106
-                    2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836
-                    1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533
-                    0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6
-                    0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947z
-                    M10 13a3 3 0 100-6 3 3 0 000 6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Settings
-            </button>
-          </div>
-        </div>
+              )}
+            </ProfileImage>
+            <ProfileInfo>
+              <UserName>{user.fullName || 'User'}</UserName>
+              <UserEmail>{user.primaryEmailAddress?.emailAddress}</UserEmail>
+              <Badge variant="success">Active Member</Badge>
+            </ProfileInfo>
+          </ProfileHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Clerk Account Information */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-bold text-lg mb-2 border-b pb-2">Clerk Account</h3>
-            <p className="py-1"><span className="font-medium">ID:</span> {user.id}</p>
-            <p className="py-1"><span className="font-medium">Email:</span> {user.primaryEmailAddress?.emailAddress}</p>
-            <p className="py-1"><span className="font-medium">Member since:</span> {formatTimeSince(user.createdAt)}</p>
-          </div>
+          {/* Quick Actions Section */}
+          <QuickActionsSection>
+            <InfoCardTitle>Quick Actions</InfoCardTitle>
+            <Grid columns={2} gap="1rem">
+              <ChatButton to="/chat">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                Real-time Chat
+                <Badge variant="success" style={{ marginLeft: '.5rem', width: '10px', height: '10px', padding: 0 }} />
+              </ChatButton>
 
-          {/* Supabase User Information */}
-          <div className="border rounded-lg p-4">
-            <h3 className="font-bold text-lg mb-2 border-b pb-2">Supabase Data</h3>
-            {supabaseError ? (
-              <div className="p-3 bg-red-50 text-red-700 rounded-md">
-                <p className="font-medium">Error connecting to database</p>
-                <p className="text-sm mt-1">Please try again later or contact support</p>
-              </div>
-            ) : isSupabaseLoading ? (
-              <p>Loading Supabase data...</p>
-            ) : supabaseUser ? (
-              <>
-                <p className="py-1"><span className="font-medium">ID:</span> {supabaseUser.id}</p>
-                <p className="py-1"><span className="font-medium">Clerk ID:</span> {supabaseUser.clerk_id}</p>
-                <p className="py-1">
-                  <span className="font-medium">Created at:</span> {formatTimeSince(supabaseUser.created_at)}
-                </p>
-                <p className="py-1">
-                  <span className="font-medium">Last updated:</span> {formatTimeSince(supabaseUser.updated_at)}
-                </p>
-              </>
-            ) : (
-              <div className="p-3 bg-yellow-50 text-yellow-700 rounded-md">
-                <p>Your Supabase user record hasn't been created yet.</p>
-                <p className="text-sm mt-1">This may happen the first time you log in.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+              <SettingsButton as="button" onClick={() => {/* Additional action placeholder */}}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                Settings
+              </SettingsButton>
+            </Grid>
+          </QuickActionsSection>
 
-      <div className="text-center text-sm text-gray-500">
-        <p>Your account is synchronized between Clerk (authentication) and Supabase (data storage)</p>
-      </div>
-    </div>
+          <Divider />
+
+          <Grid columns={2} gap="1.5rem">
+            {/* Clerk Account Information */}
+            <InfoCard>
+              <InfoCardTitle>Clerk Account</InfoCardTitle>
+              <InfoRow>
+                <InfoLabel>ID:</InfoLabel>
+                <InfoValue>{user.id}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Email:</InfoLabel>
+                <InfoValue>{user.primaryEmailAddress?.emailAddress}</InfoValue>
+              </InfoRow>
+              <InfoRow>
+                <InfoLabel>Member since:</InfoLabel>
+                <InfoValue>{formatTimeSince(user.createdAt)}</InfoValue>
+              </InfoRow>
+            </InfoCard>
+
+            {/* Supabase User Information */}
+            <InfoCard>
+              <InfoCardTitle>Supabase Data</InfoCardTitle>
+              {supabaseError ? (
+                <AlertBox className="error">
+                  <AlertTitle>Error connecting to database</AlertTitle>
+                  <AlertMessage>Please try again later or contact support</AlertMessage>
+                </AlertBox>
+              ) : isSupabaseLoading ? (
+                <Flex align="center" justify="center" style={{ padding: '20px' }}>
+                  <div className="spin">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="2" x2="12" y2="6" />
+                      <line x1="12" y1="18" x2="12" y2="22" />
+                      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+                      <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                      <line x1="2" y1="12" x2="6" y2="12" />
+                      <line x1="18" y1="12" x2="22" y2="12" />
+                      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+                      <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                    </svg>
+                  </div>
+                </Flex>
+              ) : supabaseUser ? (
+                <>
+                  <InfoRow>
+                    <InfoLabel>ID:</InfoLabel>
+                    <InfoValue>{supabaseUser.id}</InfoValue>
+                  </InfoRow>
+                  <InfoRow>
+                    <InfoLabel>Clerk ID:</InfoLabel>
+                    <InfoValue>{supabaseUser.clerk_id}</InfoValue>
+                  </InfoRow>
+                  <InfoRow>
+                    <InfoLabel>Created at:</InfoLabel>
+                    <InfoValue>{formatTimeSince(supabaseUser.created_at)}</InfoValue>
+                  </InfoRow>
+                  <InfoRow>
+                    <InfoLabel>Last updated:</InfoLabel>
+                    <InfoValue>{formatTimeSince(supabaseUser.updated_at)}</InfoValue>
+                  </InfoRow>
+                </>
+              ) : (
+                <AlertBox className="warning">
+                  <AlertTitle>Your Supabase user record hasn't been created yet.</AlertTitle>
+                  <AlertMessage>This may happen the first time you log in.</AlertMessage>
+                </AlertBox>
+              )}
+            </InfoCard>
+          </Grid>
+        </Card>
+      </FadeIn>
+
+      <FooterText>
+        Your account is synchronized between Clerk (authentication) and Supabase (data storage)
+      </FooterText>
+    </PageContainer>
   );
 };
 
