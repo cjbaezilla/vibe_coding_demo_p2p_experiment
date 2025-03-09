@@ -69,8 +69,24 @@ export const useChatRealtime = (
   // Replace a temporary message with a real one or add a new message
   const updateMessageList = useCallback((newMessage, tempIdPrefix = 'temp-') => {
     setMessages((prevMessages) => {
-      // Check if this exact message already exists
+      // Check if this exact message already exists (by ID)
       if (prevMessages.some((msg) => msg.id === newMessage.id)) {
+        return prevMessages;
+      }
+
+      // Additional check for duplicates by content and timestamp within a small window (5 seconds)
+      // This helps catch potential duplicates from different sources
+      const isDuplicate = prevMessages.some((msg) =>
+        msg.id !== newMessage.id && // Different ID
+        msg.user_id === newMessage.user_id && // Same user
+        msg.message === newMessage.message && // Same message content
+        msg.room_id === newMessage.room_id && // Same room
+        // If both have created_at timestamps, check if they're close in time
+        (msg.created_at && newMessage.created_at &&
+          Math.abs(new Date(msg.created_at) - new Date(newMessage.created_at)) < 5000)
+      );
+
+      if (isDuplicate) {
         return prevMessages;
       }
 

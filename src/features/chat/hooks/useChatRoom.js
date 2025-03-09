@@ -5,7 +5,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseUserContext } from '../../auth/contexts/SupabaseUserProvider';
 import {
-  fetchChatMessages,
   sendChatMessage,
   joinChatRoom,
   leaveChatRoom,
@@ -92,42 +91,6 @@ export const useChatRoom = (roomId) => {
     isSubscribed,
     addLocalMessage
   } = useChatRealtime(roomId, null, handleMembershipChange);
-
-  // Load initial messages
-  const loadMessages = useCallback(async () => {
-    if (!roomId || !supabaseUser) {
-      return;
-    }
-
-    try {
-      // First check if the room still exists
-      const exists = await checkRoomExists();
-      if (!exists) {
-        return;
-      }
-
-      setLoading(true);
-
-      // Fetch messages from the database
-      const fetchedMessages = await fetchChatMessages(roomId);
-
-      // We'll use the messages directly but also let the realtime hook know about them
-      // This ensures we have immediate data display but also maintain real-time updates
-      if (fetchedMessages && fetchedMessages.length > 0) {
-        // Apply each message individually to maintain proper order and handle deduplication
-        fetchedMessages.forEach((message) => {
-          addLocalMessage(message);
-        });
-      }
-
-      setError(null);
-    } catch (err) {
-      console.error('Error loading messages:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [roomId, supabaseUser, checkRoomExists, addLocalMessage]);
 
   // Join the current room
   const joinRoom = useCallback(async () => {
@@ -226,16 +189,7 @@ export const useChatRoom = (roomId) => {
 
     try {
       // Send to server
-      const realMessage = await sendChatMessage(supabaseUser.id, roomId, trimmedMessage);
-
-      // If we got a real message back from the server, update our local state with it
-      if (realMessage) {
-        // The real message may not include the user data, so we add it
-        addLocalMessage({
-          ...realMessage,
-          users: userData
-        });
-      }
+      await sendChatMessage(supabaseUser.id, roomId, trimmedMessage);
 
       // Remove from pending messages
       setPendingMessages((prev) => prev.filter((msg) => msg.id !== tempId));
@@ -271,8 +225,9 @@ export const useChatRoom = (roomId) => {
       // Check if room exists before loading data
       checkRoomExists().then((exists) => {
         if (exists) {
-          loadMessages();
-          loadMembers();
+          // Don't call loadMessages since useChatRealtime handles this
+          setLoading(true); // Signal loading state for UI
+          loadMembers().finally(() => setLoading(false));
         }
       });
     }
@@ -289,7 +244,7 @@ export const useChatRoom = (roomId) => {
         }
       });
     };
-  }, [roomId, supabaseUser, loadMessages, loadMembers, pendingMessages, roomExists, checkRoomExists]);
+  }, [roomId, supabaseUser, loadMembers, pendingMessages, roomExists, checkRoomExists]);
 
   // Enhanced members list with online status
   const membersWithStatus = members.map((member) => ({
@@ -309,7 +264,10 @@ export const useChatRoom = (roomId) => {
     joinRoom,
     leaveRoom,
     refreshMembers: loadMembers,
-    refreshMessages: loadMessages,
+    refreshMessages: () => {
+      setLoading(true);
+      setTimeout(() => setLoading(false), 300);
+    },
     hasPendingMessages: pendingMessages.length > 0,
     roomExists
   };
