@@ -77,4 +77,13 @@ module.exports = {
       }
     }
   },
+  overrides: [
+    {
+      // Allow console statements in service files
+      files: ['**/services/**/*.js'],
+      rules: {
+        'no-console': 'off'
+      }
+    }
+  ]
 };

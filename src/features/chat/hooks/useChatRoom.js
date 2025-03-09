@@ -73,8 +73,6 @@ export const useChatRoom = (roomId) => {
 
   // Handle membership changes - refresh the members list and check if user is still a member
   const handleMembershipChange = useCallback((payload) => {
-    console.log('Membership change in useChatRoom:', payload);
-
     // Refresh the members list to get the updated membership status
     loadMembers();
 
@@ -83,7 +81,6 @@ export const useChatRoom = (roomId) => {
         payload.old &&
         payload.old.user_id === supabaseUser?.id &&
         payload.old.room_id === roomId) {
-      console.log('Current user was removed from the room');
       setHasJoined(false);
     }
   }, [supabaseUser, roomId, loadMembers]);
@@ -181,7 +178,9 @@ export const useChatRoom = (roomId) => {
 
   // Send a message in the current room
   const sendMessage = useCallback(async (messageText) => {
-    if (!roomId || !supabaseUser || !messageText.trim()) {
+    // Validate input
+    const trimmedMessage = messageText?.trim();
+    if (!roomId || !supabaseUser || !trimmedMessage) {
       return;
     }
 
@@ -191,36 +190,53 @@ export const useChatRoom = (roomId) => {
       return;
     }
 
+    // Create the user data object once to avoid duplication
+    const userData = {
+      id: supabaseUser.id,
+      full_name: supabaseUser.full_name,
+      image_url: supabaseUser.image_url
+    };
+
     // Create a temporary message for optimistic UI update
     const tempId = `temp-${Date.now()}`;
     const tempMessage = {
       id: tempId,
       room_id: roomId,
       user_id: supabaseUser.id,
-      message: messageText,
+      message: trimmedMessage,
       created_at: new Date().toISOString(),
-      users: {
-        id: supabaseUser.id,
-        full_name: supabaseUser.full_name,
-        image_url: supabaseUser.image_url
-      }
+      users: userData
     };
 
     // Add to pending messages to track status
-    setPendingMessages((prev) => [...prev, { id: tempId, text: messageText }]);
+    setPendingMessages((prev) => [...prev, { id: tempId, text: trimmedMessage }]);
 
     // Add message to local state immediately (optimistic update)
     addLocalMessage(tempMessage);
 
     try {
       // Send to server
-      await sendChatMessage(supabaseUser.id, roomId, messageText);
+      const realMessage = await sendChatMessage(supabaseUser.id, roomId, trimmedMessage);
+
+      // If we got a real message back from the server, update our local state with it
+      if (realMessage) {
+        // The real message may not include the user data, so we add it
+        addLocalMessage({
+          ...realMessage,
+          users: userData
+        });
+      }
+
       // Remove from pending messages
       setPendingMessages((prev) => prev.filter((msg) => msg.id !== tempId));
-      // The real-time subscription will update with the actual message
     } catch (err) {
-      console.error('Error sending message:', err);
-      setError(err.message);
+      // Handle the error but keep the UI responsive
+      const errorMessage = err.message || 'Failed to send message';
+      console.error(`Error sending message: ${errorMessage}`);
+      setError(errorMessage);
+
+      // We could add a visual indicator that the message failed to send
+      // but we leave the temp message in the UI to allow for retry
     }
   }, [roomId, supabaseUser, addLocalMessage, checkRoomExists]);
 

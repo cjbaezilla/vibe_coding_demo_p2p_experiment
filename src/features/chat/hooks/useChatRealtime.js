@@ -8,6 +8,15 @@ import { useSupabaseUserContext } from '../../auth/contexts/SupabaseUserProvider
 import { updateUserPresence } from '../services/chatService';
 
 /**
+ * Helper function to check if two messages have the same content
+ * @param {object} msg1 - First message to compare
+ * @param {object} msg2 - Second message to compare
+ * @returns {boolean} True if the messages have the same content
+ */
+const isSameMessageContent = (msg1, msg2) =>
+  msg1.user_id === msg2.user_id && msg1.message === msg2.message;
+
+/**
  * Hook for managing real-time chat subscriptions
  * @param {string} roomId - Current room ID to subscribe to (optional)
  * @param {Function} onOnlineUsersChange - Callback when online users change
@@ -28,7 +37,6 @@ export const useChatRealtime = (
   // Store subscriptions to clean up
   const subscriptions = useRef({
     messages: null,
-    rooms: null,
     members: null,
     presence: null,
     presenceInterval: null
@@ -37,26 +45,19 @@ export const useChatRealtime = (
   // Cleanup function for all subscriptions
   const cleanupSubscriptions = useCallback(() => {
     // Clear all active subscriptions
-    if (subscriptions.current.messages) {
-      subscriptions.current.messages.unsubscribe();
-    }
-    if (subscriptions.current.rooms) {
-      subscriptions.current.rooms.unsubscribe();
-    }
-    if (subscriptions.current.members) {
-      subscriptions.current.members.unsubscribe();
-    }
-    if (subscriptions.current.presence) {
-      subscriptions.current.presence.unsubscribe();
-    }
-    if (subscriptions.current.presenceInterval) {
-      clearInterval(subscriptions.current.presenceInterval);
-    }
+    Object.values(subscriptions.current).forEach((subscription) => {
+      if (subscription) {
+        if (typeof subscription === 'function') {
+          clearInterval(subscription);
+        } else if (typeof subscription.unsubscribe === 'function') {
+          subscription.unsubscribe();
+        }
+      }
+    });
 
     // Reset subscription states
     subscriptions.current = {
       messages: null,
-      rooms: null,
       members: null,
       presence: null,
       presenceInterval: null
@@ -65,92 +66,103 @@ export const useChatRealtime = (
     setIsSubscribed(false);
   }, []);
 
+  // Replace a temporary message with a real one or add a new message
+  const updateMessageList = useCallback((newMessage, tempIdPrefix = 'temp-') => {
+    setMessages((prevMessages) => {
+      // Check if this exact message already exists
+      if (prevMessages.some((msg) => msg.id === newMessage.id)) {
+        return prevMessages;
+      }
+
+      // Find a temporary message to replace
+      const tempMessageIndex = prevMessages.findIndex((msg) =>
+        msg.id.toString().startsWith(tempIdPrefix) && isSameMessageContent(msg, newMessage)
+      );
+
+      // If there's a temp message to replace
+      if (tempMessageIndex !== -1) {
+        const updatedMessages = [...prevMessages];
+        updatedMessages[tempMessageIndex] = newMessage;
+        return updatedMessages;
+      }
+
+      // Otherwise, add as a new message
+      return [newMessage, ...prevMessages];
+    });
+  }, []);
+
   // Handle new message received from subscription
   const handleNewMessage = useCallback((payload) => {
     const newMessage = payload.new;
 
-    // Only add message if it's for the current room
+    // Only process messages for the current room
     if (roomId && newMessage.room_id === roomId) {
-      setMessages((prevMessages) => {
-        // Check if message already exists to prevent duplicates
-        const exists = prevMessages.some((msg) => msg.id === newMessage.id);
-        if (exists) {
-          return prevMessages;
-        }
-        return [newMessage, ...prevMessages];
-      });
+      updateMessageList(newMessage);
     }
-  }, [roomId]);
+  }, [roomId, updateMessageList]);
 
-  // Handle user presence changes
-  const handlePresenceChange = useCallback(() => {
-    const fetchOnlineUsers = async () => {
-      try {
-        // Query users who have been seen recently - use a longer time window for safety
-        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        console.log(`Fetching online users since: ${tenMinutesAgo}`);
+  // Fetch online users from the database
+  const fetchOnlineUsers = useCallback(async () => {
+    try {
+      // Query users who have been seen recently - use a 10 minute window
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select('id, full_name, image_url, last_seen_at')
-          .gte('last_seen_at', tenMinutesAgo);
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('id, full_name, image_url, last_seen_at')
+        .gte('last_seen_at', tenMinutesAgo);
 
-        if (fetchError) {
-          console.error('Error fetching online users:', fetchError);
-          return;
-        }
-
-        // Log online user detection
-        if (Array.isArray(data)) {
-          console.log(`Detected ${data.length} online users:`, data.map((u) => ({
-            id: u.id,
-            name: u.full_name,
-            lastSeen: u.last_seen_at
-          })));
-        }
-
-        // Always include the current user as online if they're authenticated
-        if (supabaseUser && Array.isArray(data)) {
-          // Check if the current user is already in the list
-          const currentUserInList = data.some((user) => user.id === supabaseUser.id);
-
-          // If not, add them
-          if (!currentUserInList) {
-            const userWithCurrentTimestamp = {
-              ...supabaseUser,
-              last_seen_at: new Date().toISOString()
-            };
-
-            console.log(`Adding current user to online list:`, {
-              id: supabaseUser.id,
-              name: supabaseUser.full_name
-            });
-
-            data.push(userWithCurrentTimestamp);
-
-            // Also update the user's presence in the database
-            updateUserPresence(supabaseUser.id).catch(console.error);
-          }
-        }
-
-        setOnlineUsers(data || []);
-
-        // Call the callback if provided to notify about online users change
-        if (onOnlineUsersChange && Array.isArray(data)) {
-          onOnlineUsersChange(data);
-        }
-      } catch (err) {
-        console.error('Failed to process presence change:', err);
+      if (fetchError) {
+        console.error('Error fetching online users:', fetchError);
+        return;
       }
-    };
 
-    fetchOnlineUsers();
+      // Ensure we have a valid array
+      const onlineUsersList = Array.isArray(data) ? data : [];
+
+      // Always include the current user as online if they're authenticated
+      if (supabaseUser && !onlineUsersList.some((user) => user.id === supabaseUser.id)) {
+        onlineUsersList.push({
+          ...supabaseUser,
+          last_seen_at: new Date().toISOString()
+        });
+      }
+
+      setOnlineUsers(onlineUsersList);
+
+      // Call the callback if provided
+      if (onOnlineUsersChange) {
+        onOnlineUsersChange(onlineUsersList);
+      }
+    } catch (err) {
+      console.error('Failed to fetch online users:', err);
+    }
   }, [onOnlineUsersChange, supabaseUser]);
+
+  // Update user's presence in the database and local state
+  const updatePresence = useCallback(async () => {
+    if (!supabaseUser) {
+      return;
+    }
+
+    try {
+      // Update presence in the database
+      await updateUserPresence(supabaseUser.id);
+
+      // Update online users list
+      await fetchOnlineUsers();
+    } catch (err) {
+      console.error('Error updating presence:', err);
+    }
+  }, [supabaseUser, fetchOnlineUsers]);
+
+  // Handle presence changes
+  const handlePresenceChange = useCallback(() => {
+    fetchOnlineUsers();
+  }, [fetchOnlineUsers]);
 
   // Handle room membership changes
   const handleMembershipChange = useCallback((payload) => {
-    console.log('Room membership change detected:', payload);
-
     // If a callback was provided, call it with the payload
     if (onMembershipChange) {
       onMembershipChange(payload);
@@ -187,8 +199,6 @@ export const useChatRealtime = (
         .subscribe();
 
       // 3. Subscribe to room membership changes
-      // If roomId is provided, filter for that specific room
-      // Otherwise, subscribe to all membership changes
       subscriptions.current.members = supabase
         .channel('public:chat_room_members')
         .on('postgres_changes',
@@ -203,17 +213,10 @@ export const useChatRealtime = (
         .subscribe();
 
       // 4. Set up interval to update user's own presence
-      subscriptions.current.presenceInterval = setInterval(() => {
-        console.log('Updating user presence on interval');
-        updateUserPresence(supabaseUser.id).catch(console.error);
-      }, 30000); // Update every 30 seconds instead of every minute
+      subscriptions.current.presenceInterval = setInterval(updatePresence, 30000);
 
       // Immediately update presence on subscription start
-      console.log('Immediately updating user presence on subscription start');
-      updateUserPresence(supabaseUser.id).catch(console.error);
-
-      // Also immediately fetch online users
-      handlePresenceChange();
+      updatePresence();
 
       setIsSubscribed(true);
       setError(null);
@@ -224,15 +227,21 @@ export const useChatRealtime = (
     }
 
     // Cleanup on unmount or when roomId changes
-    return () => {
-      cleanupSubscriptions();
-    };
-  }, [supabaseUser, roomId, handleNewMessage, handlePresenceChange, handleMembershipChange, cleanupSubscriptions]);
+    return cleanupSubscriptions;
+  }, [
+    supabaseUser,
+    roomId,
+    handleNewMessage,
+    handlePresenceChange,
+    handleMembershipChange,
+    cleanupSubscriptions,
+    updatePresence
+  ]);
 
   // Add message to local state optimistically (before server confirms)
   const addLocalMessage = useCallback((message) => {
-    setMessages((prevMessages) => [message, ...prevMessages]);
-  }, []);
+    updateMessageList(message);
+  }, [updateMessageList]);
 
   return {
     messages,

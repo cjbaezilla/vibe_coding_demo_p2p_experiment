@@ -5,6 +5,55 @@ import React, { useRef, useEffect } from 'react';
 import ChatMessageItem from './ChatMessageItem';
 
 /**
+ * Helper function to extract unique messages and prevent duplicates
+ * @param {Array} messages - Array of chat messages
+ * @returns {Array} Deduplicated array of messages
+ */
+const getUniqueMessages = (messages) => {
+  if (!messages || messages.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = new Set();
+  const tempMessageMap = new Map();
+  const uniqueMessages = [];
+
+  // Filter messages to remove duplicates
+  for (const message of messages) {
+    // For real messages (non-temporary)
+    if (!message.id.toString().startsWith('temp-')) {
+      // Skip if we've seen this ID before
+      if (uniqueIds.has(message.id)) {
+        continue;
+      }
+
+      // Add this ID to our set of seen IDs
+      uniqueIds.add(message.id);
+
+      // Check if we have a temporary version of this message
+      const tempKey = `${message.user_id}:${message.message}`;
+
+      // We use the real message and skip adding the temp version later
+      if (tempMessageMap.has(tempKey)) {
+        tempMessageMap.delete(tempKey);
+      }
+
+      uniqueMessages.push(message);
+      continue;
+    }
+
+    // For temporary messages, track by user+content
+    const tempKey = `${message.user_id}:${message.message}`;
+    if (!tempMessageMap.has(tempKey)) {
+      tempMessageMap.set(tempKey, message);
+      uniqueMessages.push(message);
+    }
+  }
+
+  return uniqueMessages;
+};
+
+/**
  * Chat message list component
  * @param {object} props - Component props
  * @param {Array} props.messages - List of message objects
@@ -27,6 +76,9 @@ const ChatMessageList = ({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Get unique messages to display
+  const uniqueMessages = getUniqueMessages(messages);
 
   return (
     <div
@@ -54,7 +106,7 @@ const ChatMessageList = ({
       ) : (
         <div className="flex flex-col-reverse">
           {/* Render messages in reverse order (newest at bottom) */}
-          {messages.map((message) => (
+          {uniqueMessages.map((message) => (
             <ChatMessageItem
               key={message.id}
               message={message}

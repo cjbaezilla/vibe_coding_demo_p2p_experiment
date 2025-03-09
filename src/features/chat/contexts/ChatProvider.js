@@ -28,8 +28,6 @@ export const ChatProvider = ({ children }) => {
 
   // Handle global membership changes (for room list refresh)
   const handleGlobalMembershipChange = useCallback((payload) => {
-    console.log('Global membership change detected:', payload);
-
     // Refresh the rooms list to reflect membership changes
     chatState.loadRooms();
   }, [chatState]);
