@@ -6,6 +6,7 @@ import {
   Title, Subtitle, Text, PrimaryButton, SecondaryButton,
   Card, Grid, Flex, GradientText, Bubble, SlideUp, FadeIn
 } from '../common/components/StyledComponents';
+import { ChatIcon, LoginIcon, SignupIcon } from '../common/components/IconComponents';
 
 // Define additional animations
 const floatUpDown = keyframes`
@@ -172,9 +173,7 @@ const HomePage = () => (
                 <Flex justify="center">
                   <StyledLink to="/chat">
                     <PrimaryButton>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
+                      <ChatIcon />
                       Start Chatting Now
                     </PrimaryButton>
                   </StyledLink>
@@ -206,23 +205,14 @@ const HomePage = () => (
                 <ButtonGroup>
                   <StyledLink to="/login">
                     <SecondaryButton>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                        <polyline points="10 17 15 12 10 7" />
-                        <line x1="15" y1="12" x2="3" y2="12" />
-                      </svg>
+                      <LoginIcon />
                       Log In
                     </SecondaryButton>
                   </StyledLink>
 
                   <StyledLink to="/signup">
                     <PrimaryButton>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <line x1="20" y1="8" x2="20" y2="14" />
-                        <line x1="23" y1="11" x2="17" y2="11" />
-                      </svg>
+                      <SignupIcon />
                       Sign Up
                     </PrimaryButton>
                   </StyledLink>
@@ -240,9 +230,7 @@ const HomePage = () => (
         <Grid columns={3} gap="1.5rem">
           <FeatureCard>
             <FeatureIcon color="primary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              <ChatIcon />
             </FeatureIcon>
             <Subtitle>Vibrant Chat</Subtitle>
             <Text>

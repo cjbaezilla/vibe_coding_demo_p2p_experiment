@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
   PrimaryButton, SecondaryButton, Input, Text,
-  Title, Subtitle, Card, Flex, FadeIn
+  Subtitle, Card, Flex, FadeIn
 } from '../../common/components/StyledComponents';
 
 // Animations

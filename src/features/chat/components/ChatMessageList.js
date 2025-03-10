@@ -2,16 +2,9 @@
  * Component for displaying a list of chat messages
  */
 import React, { useRef, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import ChatMessageItem from './ChatMessageItem';
-import { Text } from '../../common/components/StyledComponents';
-
-// Animations
-const pulse = keyframes`
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-`;
+import { Text, pulse } from '../../common/components/StyledComponents';
 
 // Styled components
 const MessageListContainer = styled.div`

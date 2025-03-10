@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import styled, { keyframes } from 'styled-components';
-import { Flex, Icon, Badge, SlideDown } from '../features/common/components/StyledComponents';
+import { Flex, Badge, SlideDown } from '../features/common/components/StyledComponents';
 
 // Animated background
 const gradient = keyframes`
