@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 // Import our custom theme provider
 import ThemeProvider from './features/common/theme/ThemeProvider';
 
@@ -26,7 +26,7 @@ function App() {
   return (
     <ThemeProvider>
       <ClerkProvider>
-        <HashRouter>
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<HomePage />} />
@@ -51,7 +51,7 @@ function App() {
               />
             </Route>
           </Routes>
-        </HashRouter>
+        </BrowserRouter>
       </ClerkProvider>
     </ThemeProvider>
   );
